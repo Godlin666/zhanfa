@@ -1,0 +1,1171 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0f1419">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="战法选股">
+<title>低位首板回踩缩量战法 · 选股 + 信号体检</title>
+<style>
+  :root{
+    --bg:#0f1419; --panel:#1a212b; --panel2:#222c39; --line:#2c3848;
+    --txt:#e6edf3; --muted:#8b9bb0; --accent:#3b82f6; --accent2:#2563eb;
+    --green:#22c55e; --red:#ef4444; --amber:#f59e0b; --chip:#28333f;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",Segoe UI,sans-serif;
+    font-size:13px;line-height:1.5;}
+  header{padding:14px 20px;background:linear-gradient(180deg,#1c2530,#151b23);
+    border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20;}
+  h1{margin:0;font-size:17px;font-weight:600;letter-spacing:.5px;}
+  h1 span{color:var(--muted);font-size:12px;font-weight:400;margin-left:8px;}
+  .topbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px;}
+  .seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;}
+  .seg button{background:var(--panel);color:var(--muted);border:none;padding:7px 16px;
+    cursor:pointer;font-size:13px;}
+  .seg button.active{background:var(--accent);color:#fff;}
+  button.btn{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 14px;
+    cursor:pointer;font-size:13px;}
+  button.btn:hover{background:var(--accent2);}
+  button.ghost{background:var(--chip);color:var(--txt);}
+  button.ghost:hover{background:#34404f;}
+  .meta{color:var(--muted);font-size:12px;}
+  .meta b{color:var(--txt);}
+  main{padding:18px 20px;max-width:1280px;margin:0 auto;}
+  .tabs{display:flex;gap:6px;margin-bottom:16px;}
+  .tabs button{background:transparent;color:var(--muted);border:none;border-bottom:2px solid transparent;
+    padding:8px 4px;margin-right:18px;cursor:pointer;font-size:14px;}
+  .tabs button.active{color:var(--txt);border-bottom-color:var(--accent);font-weight:600;}
+  .view{display:none;} .view.active{display:block;}
+  details.params{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    margin-bottom:16px;}
+  details.params summary{cursor:pointer;padding:11px 16px;font-weight:600;user-select:none;list-style:none;}
+  details.params summary::-webkit-details-marker{display:none;}
+  details.params summary::before{content:"\25B8";margin-right:8px;color:var(--accent);}
+  details.params[open] summary::before{content:"\25BE";}
+  .pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px 18px;
+    padding:6px 16px 16px;}
+  .pgroup{grid-column:1/-1;color:var(--muted);font-size:11px;letter-spacing:1px;text-transform:uppercase;
+    margin-top:8px;border-top:1px dashed var(--line);padding-top:8px;}
+  .field{display:flex;flex-direction:column;gap:3px;}
+  .field label{color:var(--txt);font-size:11px;font-weight:500;}
+  .field .ph{color:#7c8ba0;font-size:10.5px;line-height:1.4;margin-top:1px;}
+  .field input,.field select{background:var(--panel2);border:1px solid var(--line);color:var(--txt);
+    border-radius:6px;padding:6px 8px;font-size:13px;}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;}
+  .card .k{color:var(--muted);font-size:12px;}
+  .card .v{font-size:22px;font-weight:700;margin-top:6px;}
+  .v.green{color:var(--green);} .v.red{color:var(--red);} .v.amber{color:var(--amber);}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap;}
+  th{color:var(--muted);font-weight:500;cursor:pointer;user-select:none;background:var(--bg);}
+  thead{position:sticky;top:0;z-index:1;}
+  th.l,td.l{text-align:left;}
+  tbody tr:hover{background:var(--panel);}
+  .tag{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;}
+  .tag.buy{background:rgba(34,197,94,.16);color:var(--green);}
+  .tag.obs{background:rgba(245,158,11,.16);color:var(--amber);}
+  .tag.profit{background:rgba(34,197,94,.16);color:var(--green);}
+  .tag.stop{background:rgba(239,68,68,.16);color:var(--red);}
+  .tag.timeout{background:rgba(139,155,176,.18);color:var(--muted);}
+  .pos{color:var(--green);} .neg{color:var(--red);}
+  .toolrow{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap;}
+  .toolrow input[type=text],.toolrow input[type=date],.toolrow input[type=number],.toolrow select{
+    background:var(--panel2);border:1px solid var(--line);
+    color:var(--txt);border-radius:6px;padding:7px 10px;font-size:13px;}
+  .toolrow input[type=number]{width:96px;}
+  .tablewrap{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:auto;max-height:62vh;}
+  .empty{padding:48px;text-align:center;color:var(--muted);}
+  .empty .big{font-size:40px;margin-bottom:10px;opacity:.5;}
+  canvas{width:100%;display:block;}
+  .chartbox{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:16px;}
+  .chartbox h3{margin:0 0 8px;font-size:13px;color:var(--muted);font-weight:500;}
+  .btnote{background:var(--panel2);border:1px solid var(--line);border-left:3px solid var(--accent);
+    border-radius:8px;padding:10px 14px;margin:0 0 14px;color:var(--muted);font-size:12px;line-height:1.7;}
+  .btnote b{color:var(--txt);}
+  .exitdist{display:flex;flex-direction:column;gap:10px;}
+  .exitrow{display:grid;grid-template-columns:44px 1fr auto;align-items:center;gap:12px;}
+  .exitlab{color:var(--txt);font-size:13px;}
+  .exitbarwrap{height:16px;background:var(--chip);border-radius:8px;overflow:hidden;}
+  .exitbar{height:100%;border-radius:8px;min-width:0;transition:width .2s;}
+  .exitnum{color:var(--muted);font-size:12px;white-space:nowrap;}
+  .exitnum .pos{color:var(--green);} .exitnum .neg{color:var(--red);}
+  .progress{height:4px;background:var(--line);border-radius:4px;overflow:hidden;margin:8px 0;display:none;}
+  .progress.on{display:block;}
+  .progress > i{display:block;height:100%;background:var(--accent);width:0;transition:width .15s;}
+  .hint{color:var(--muted);font-size:11px;margin-top:2px;}
+  a.link{color:var(--accent);cursor:pointer;text-decoration:none;}
+  a.link:hover{text-decoration:underline;}
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;
+    align-items:center;justify-content:center;padding:20px;}
+  .modal-overlay.open{display:flex;}
+  .modal-box{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    width:100%;max-width:1100px;max-height:90vh;overflow:auto;padding:16px 18px 18px;}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+  .modal-head h3{margin:0;font-size:15px;}
+  .chartLegend{display:flex;flex-wrap:wrap;gap:8px 16px;margin:6px 0 10px;font-size:12px;color:var(--muted);}
+  .chartLegend .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:middle;}
+  /* ---- 手机窄屏适配 ---- */
+  @media (max-width:700px){
+    header{padding:10px 12px;}
+    h1{font-size:15px;} h1 span{display:none;}
+    main{padding:12px 10px;}
+    .topbar{gap:8px;margin-top:10px;}
+    .seg button{padding:7px 13px;} button.btn{padding:8px 12px;}
+    .toolrow{gap:8px;}
+    #scanSearch{min-width:0 !important;flex:1 1 130px;}
+    .toolrow input[type=number]{width:74px;}
+    th,td{padding:6px 7px;font-size:11.5px;}
+    .cards{grid-template-columns:repeat(auto-fit,minmax(102px,1fr));gap:8px;}
+    .card{padding:10px 12px;} .card .v{font-size:17px;}
+    .modal-overlay{padding:6px;} .modal-box{padding:10px;max-height:96vh;}
+    .tablewrap{max-height:70vh;-webkit-overflow-scrolling:touch;}
+    .pgrid{grid-template-columns:1fr 1fr;gap:8px 10px;}
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>低位首板回踩缩量战法 <span>选股扫描 · 信号体检 · 纯前端离线工具</span></h1>
+  <div class="topbar">
+    <div class="seg" id="marketSeg">
+      <button data-m="HK" class="active">港股</button>
+      <button data-m="US">美股</button>
+    </div>
+    <button class="btn" id="loadBtn">加载数据文件</button>
+    <input type="file" id="fileInput" accept=".json,application/json" style="display:none">
+    <span class="meta" id="dataMeta"></span>
+  </div>
+</header>
+
+<main>
+  <details class="params" id="paramsBox">
+    <summary>战法参数（点击展开调整）</summary>
+    <div class="pgrid" id="pgrid"></div>
+    <div style="padding:0 16px 16px;">
+      <button class="btn" id="applyBtn">应用参数并重算</button>
+      <button class="ghost btn" id="resetBtn">恢复默认</button>
+    </div>
+  </details>
+
+  <div class="tabs">
+    <button data-t="scan" class="active">① 选股扫描</button>
+    <button data-t="bt">② 信号体检</button>
+  </div>
+
+  <!-- ===== Tab1 选股扫描 ===== -->
+  <section class="view active" id="view-scan">
+    <div class="toolrow">
+      <input type="text" id="scanSearch" placeholder="搜索 代码/名称…" style="min-width:200px">
+      <select id="scanState" title="按信号状态筛选">
+        <option value="">全部信号</option>
+        <option value="可买入">只看可买入</option>
+        <option value="观察中">只看观察中</option>
+      </select>
+      <select id="scanTier" title="按参考价值筛选（仅美股）" style="display:none">
+        <option value="">全部参考价值</option>
+        <option value="较高">较高</option>
+        <option value="中等偏高">中等偏高</option>
+        <option value="中等">中等</option>
+        <option value="较低">较低</option>
+      </select>
+      <input type="number" id="scanPriceMin" step="any" min="0" placeholder="价格 ≥" title="当前价下限">
+      <input type="number" id="scanPriceMax" step="any" min="0" placeholder="价格 ≤" title="当前价上限">
+      <button class="ghost btn" id="scanClearBtn" title="清空所有筛选条件">清空筛选</button>
+      <span class="meta" id="scanMeta"></span>
+    </div>
+    <div class="progress" id="scanProg"><i></i></div>
+    <div class="tablewrap" id="scanWrap"></div>
+  </section>
+
+  <!-- ===== Tab2 信号体检 ===== -->
+  <section class="view" id="view-bt">
+    <p class="btnote">体检口径：对每个历史信号，在其买点以<b>等额、相互独立</b>的方式跟踪到止盈 / 止损 / 超时，只统计「被选出来的票后续表现」。<b>不模拟资金账户、不做全仓串行复利</b>，因此没有资金曲线与账户回撤——那类指标在大量并发信号下会严重失真。</p>
+    <div class="toolrow">
+      <label class="meta">区间</label>
+      <input type="date" id="btStart"><span class="meta">至</span><input type="date" id="btEnd">
+      <button class="btn" id="runBtBtn">运行体检</button>
+      <button class="ghost btn" id="btAllBtn">全部历史</button>
+      <span class="meta" id="btMeta"></span>
+    </div>
+    <div class="progress" id="btProg"><i></i></div>
+    <div class="cards" id="btCards"></div>
+    <div class="chartbox" id="exitDistBox" style="display:none"><h3>退出方式分布</h3><div id="btExitDist"></div></div>
+    <div class="chartbox" id="tierBox" style="display:none"><h3>参考价值分层对比（仅美股）</h3><div id="btTierTable"></div></div>
+    <div class="chartbox" id="calBox" style="display:none"><h3>期末调仓窗口 vs 正常交易日（仅美股 · 突破日落在罗素重构/四巫日/季末季初的放量多为机械资金流）</h3><div id="btCalTable"></div></div>
+    <div class="tablewrap" id="btWrap"></div>
+  </section>
+</main>
+
+<div class="modal-overlay" id="chartModal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3 id="chartTitle"></h3>
+      <button class="ghost btn" id="chartCloseBtn">✕ 关闭</button>
+    </div>
+    <div class="chartLegend" id="chartLegend"></div>
+    <canvas id="klineCanvas" height="440"></canvas>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+ *  战法引擎（纯函数）—— 已用 node 对真实数据验证
+ *  kline 元素顺序: [date, open, high, low, close, volume] 升序
+ *  下标: date=0 open=1 high=2 low=3 close=4 volume=5
+ * ============================================================ */
+
+const DEFAULT_PARAMS = {
+  thMainA:9.8, thGemA:19.6, thBseA:29.5, thStA:4.8, thHK:9, thUS:9,
+  firstBoardLookback:60, lowWindow:250, lowPct:30, flatWindow:30, flatAmp:25,
+  obsDays:3, notBreakUseLow:false, shrinkRatio:0.7,
+  takeProfit:20, stopLoss:5, maxHold:30, scanRecent:5,
+  minAmtHK:100,   // 港股最低日均成交额(万港元/日)，过滤仙股/僵尸股等没法交易的低流动性票
+  // ---- 以下仅美股使用：平台/杯柄突破策略（与上面的涨停参数完全独立）----
+  usBaseWindow:50, usBaseMaxAmp:35,
+  usBreakoutVolMult:1.5, usBreakoutClosePos:75, usBreakoutAbovePct:0,
+  usPullbackDays:5, usPullbackVolMult:0.7, usPullbackHoldPct:0, usPullbackUseLow:false,
+  usMarketFilter:true, usMarketSma:50,
+  usStopBelowBreakoutPct:3, usTakeProfit:20, usMaxHold:60,
+  usLargeCapDollarVolM:30, usMidCapDollarVolM:3, usMinDollarVolM:1,   // 美股最低日均成交额(百万美元/日)
+};
+
+function changePctAt(kline, i){
+  if(i<=0) return null;
+  const prev=kline[i-1][4], c=kline[i][4];
+  if(!prev) return null;
+  return (c-prev)/prev*100;
+}
+function getThreshold(stock, params){
+  const name=stock.name||'';
+  if(stock.market==='A'){
+    if(/\*?ST/i.test(name)) return params.thStA;
+    const b=stock.board;
+    if(b==='gem'||b==='star') return params.thGemA;
+    if(b==='bse') return params.thBseA;
+    return params.thMainA;
+  }
+  if(stock.market==='HK') return params.thHK;
+  return params.thUS;
+}
+function isTriggerDay(kline, i, threshold){
+  const cp=changePctAt(kline,i);
+  return cp!==null && cp>=threshold;
+}
+// 判定 i 是否合格 D0：触发 + 首板 + 低位 + 横盘
+function evaluateD0(stock, i, params){
+  const k=stock.kline, thr=getThreshold(stock,params);
+  if(!isTriggerDay(k,i,thr)) return null;
+  const lb=params.firstBoardLookback;
+  for(let j=Math.max(1,i-lb); j<i; j++){ if(isTriggerDay(k,j,thr)) return null; }
+  const lw=params.lowWindow;
+  let lo=Infinity, hi=-Infinity, start=Math.max(0,i-lw+1);
+  for(let j=start;j<=i;j++){ if(k[j][3]<lo)lo=k[j][3]; if(k[j][2]>hi)hi=k[j][2]; }
+  const closeD0=k[i][4];
+  const lowThresholdPrice=lo+(hi-lo)*(params.lowPct/100);
+  if(!(closeD0<=lowThresholdPrice)) return null;
+  const lowPctValue=(hi>lo)?(closeD0-lo)/(hi-lo)*100:0;
+  const fw=params.flatWindow;
+  let fLo=Infinity, fHi=-Infinity, fStart=Math.max(0,i-fw), sumAmt=0, cntAmt=0;
+  for(let j=fStart;j<i;j++){ if(k[j][3]<fLo)fLo=k[j][3]; if(k[j][2]>fHi)fHi=k[j][2]; sumAmt+=k[j][4]*k[j][5]; cntAmt++; }
+  const flatAmp=(fLo>0&&fLo!==Infinity)?(fHi-fLo)/fLo*100:Infinity;
+  if(!(flatAmp<params.flatAmp)) return null;
+  // 流动性过滤：横盘窗口日均成交额太小 = 仙股/僵尸股，没法交易，剔除（港股用 minAmtHK 万；A股当前隐藏不启用此项）
+  if(stock.market==='HK' && params.minAmtHK>0){
+    const avgAmt=cntAmt?sumAmt/cntAmt:0;
+    if(avgAmt < params.minAmtHK*1e4) return null;
+  }
+  return { i, date:k[i][0], changePct:changePctAt(k,i), closeD0, lowPctValue, flatAmp, threshold:thr };
+}
+// 观察期 + 买入：status='observing'|'failed'|'buyable'|'buy'
+function evaluateBuy(stock, d0, params){
+  const k=stock.kline, i=d0.i, obs=params.obsDays, lastObs=i+obs, useLow=params.notBreakUseLow;
+  if(lastObs>=k.length){
+    for(let j=i+1;j<k.length;j++){ const v=useLow?k[j][3]:k[j][4]; if(v<d0.closeD0) return {status:'failed',reason:'broke'}; }
+    return {status:'observing', daysObserved:k.length-1-i};
+  }
+  for(let j=i+1;j<=lastObs;j++){
+    if(!(k[j][5]>0)) return {status:'failed',reason:'novol'};   // 停牌/僵尸股：观察期出现0成交量,不能当作"缩量"通过(否则 volRatio=0 恒<阈值 -> 假信号)
+    const v=useLow?k[j][3]:k[j][4]; if(v<d0.closeD0) return {status:'failed',reason:'broke'};
+  }
+  const volRatio=k[i][5]?k[lastObs][5]/k[i][5]:Infinity;
+  if(!(volRatio<params.shrinkRatio)) return {status:'failed',reason:'volume',volRatio};
+  const buyIdx=lastObs+1;
+  if(buyIdx>=k.length) return {status:'buyable', volRatio, d3Idx:lastObs};
+  return {status:'buy', volRatio, d3Idx:lastObs, buyIdx, buyDate:k[buyIdx][0], buyPrice:k[buyIdx][1]};
+}
+// 模拟交易：止盈/止损/超时（同日双触按止损）
+function simulateTrade(stock, buyIdx, buyPrice, params){
+  const k=stock.kline;
+  const tp=buyPrice*(1+params.takeProfit/100), sl=buyPrice*(1-params.stopLoss/100);
+  const end=Math.min(k.length-1, buyIdx+params.maxHold);
+  function mkExit(type,j){ const price=type==='stop'?sl:tp;
+    return {exit:type, sellIdx:j, sellDate:k[j][0], sellPrice:price, ret:(price-buyPrice)/buyPrice*100, holdDays:j-buyIdx}; }
+  for(let j=buyIdx;j<=end;j++){
+    const high=k[j][2], low=k[j][3], hitSL=low<=sl, hitTP=high>=tp;
+    if(hitSL&&hitTP) return mkExit('stop',j);
+    if(hitSL) return mkExit('stop',j);
+    if(hitTP) return mkExit('profit',j);
+  }
+  const sp=k[end][4];
+  return {exit:'timeout', sellIdx:end, sellDate:k[end][0], sellPrice:sp, ret:(sp-buyPrice)/buyPrice*100, holdDays:end-buyIdx};
+}
+// 扫描单股：返回最近相关信号
+function scanStock(stock, params, indexKline){
+  if(stock.market==='US') return scanUsStock(stock, params, indexKline);
+  const k=stock.kline;
+  if(!k||k.length<5) return null;
+  const lo=Math.max(1, k.length-(params.obsDays+params.scanRecent));
+  let best=null;
+  for(let i=k.length-2;i>=lo;i--){
+    const d0=evaluateD0(stock,i,params); if(!d0) continue;
+    const buy=evaluateBuy(stock,d0,params); if(buy.status==='failed') continue;
+    let state=null;
+    if(buy.status==='buy'||buy.status==='buyable') state='可买入';
+    else if(buy.status==='observing') state='观察中';
+    if(!state) continue;
+    const rec={ code:stock.code, name:stock.name, market:stock.market, board:stock.board,
+      d0Date:d0.date, changePct:d0.changePct, lowPctValue:d0.lowPctValue, flatAmp:d0.flatAmp,
+      volRatio:(buy.volRatio!=null?buy.volRatio:null), curPrice:k[k.length-1][4], state, d0Idx:d0.i };
+    if(!best||rec.d0Idx>best.d0Idx) best=rec;
+  }
+  return best;
+}
+function scanMarket(stocks, params, indexKline){
+  const out=[];
+  for(const s of stocks){ const r=scanStock(s,params,indexKline); if(r) out.push(r); }
+  return out;
+}
+// 全市场回测（A股/港股 用涨停引擎，美股 用平台突破引擎，见上方 backtestCnStock/backtestUsStock）
+function backtest(stocks, params, dateRange, indexKline){
+  const trades=[];
+  const start=dateRange&&dateRange.start?dateRange.start:null;
+  const end=dateRange&&dateRange.end?dateRange.end:null;
+  for(const s of stocks){
+    if(s.market==='US') trades.push(...backtestUsStock(s, params, start, end, indexKline));
+    else trades.push(...backtestCnStock(s, params, start, end));
+  }
+  trades.sort((a,b)=> a.buyDate<b.buyDate?-1 : a.buyDate>b.buyDate?1:0);
+  return { trades, stats:computeStats(trades) };
+}
+// 信号体检口径：每个信号在其买点等额独立跟踪，只统计信号后续表现，不做资金账户复利
+function computeStats(trades){
+  const n=trades.length;
+  const emptyExits={ profit:{n:0,pct:0,avgRet:0}, stop:{n:0,pct:0,avgRet:0}, timeout:{n:0,pct:0,avgRet:0} };
+  if(n===0) return {count:0,winRate:0,avgRet:0,profitFactor:0,wins:0,losses:0,avgWin:0,avgLoss:0,exits:emptyExits};
+  let wins=0,losses=0,sumWin=0,sumLoss=0,sumRet=0;
+  const acc={ profit:{n:0,sum:0}, stop:{n:0,sum:0}, timeout:{n:0,sum:0} };
+  for(const t of trades){
+    sumRet+=t.ret;
+    if(t.ret>0){ wins++; sumWin+=t.ret; } else { losses++; sumLoss+=t.ret; }
+    if(acc[t.exit]){ acc[t.exit].n++; acc[t.exit].sum+=t.ret; }
+  }
+  const avgWin=wins?sumWin/wins:0, avgLoss=losses?Math.abs(sumLoss/losses):0;
+  const exits={};
+  for(const key of ['profit','stop','timeout']){
+    const e=acc[key];
+    exits[key]={ n:e.n, pct:e.n/n*100, avgRet:e.n?e.sum/e.n:0 };
+  }
+  return { count:n, winRate:wins/n*100, avgRet:sumRet/n,
+    profitFactor:avgLoss?avgWin/avgLoss:(avgWin?Infinity:0),
+    wins, losses, avgWin, avgLoss, exits };
+}
+// 美股参考价值分层对比：按 tier 汇总交易数/胜率/平均收益
+function computeTierStats(trades){
+  const order=['较高','中等偏高','中等','较低'];
+  const map={}; order.forEach(t=>map[t]={tier:t,n:0,wins:0,sum:0});
+  for(const t of trades){
+    const tier=map[t.tier]?t.tier:'较低';
+    map[tier].n++; if(t.ret>0)map[tier].wins++; map[tier].sum+=t.ret;
+  }
+  return order.map(t=>{ const m=map[t]; return { tier:t, n:m.n,
+    winRate:m.n?m.wins/m.n*100:0, avgRet:m.n?m.sum/m.n:0 }; });
+}
+// 美股期末调仓窗口对比：突破日落在机械放量窗口 vs 正常交易日，各自的信号数/胜率/平均收益
+function computeCalStats(trades){
+  const g={ flagged:{n:0,wins:0,sum:0}, normal:{n:0,wins:0,sum:0} };
+  for(const t of trades){
+    const b=t.calFlag?g.flagged:g.normal;
+    b.n++; if(t.ret>0)b.wins++; b.sum+=t.ret;
+  }
+  return [['期末窗口信号',g.flagged],['正常交易日信号',g.normal]].map(([label,m])=>(
+    { label, n:m.n, winRate:m.n?m.wins/m.n*100:0, avgRet:m.n?m.sum/m.n:0 }));
+}
+
+/* ============================================================
+ * 美股专用：平台 / 杯柄突破策略（与A股涨停战法完全独立的引擎）
+ * 长期横盘/杯柄整理 -> 放量突破平台 -> 收盘靠近当天高位
+ * -> 后几天缩量回踩不破突破位 -> 大盘没有走弱 -> 止损设在突破位下方(不是买入价-5%)
+ *
+ * 数据限制：没有行业分类/板块ETF数据，"板块是否强势"这一条用【个股同期涨幅
+ * 相对大盘(SPY)涨幅】的相对强弱(RS)来代理，这是量化里常见的替代做法，
+ * 但不等价于真实的行业/板块强弱，仅供参考。
+ * ============================================================ */
+// date->下标查表（带缓存）。美股回测里每个候选日要查3次SPY日期，线性扫描是最大热点，用Map缓存后O(1)
+const _dateIdxCache=new WeakMap();
+function dateIndex(kline, date){
+  if(!date||!kline||!kline.length) return -1;
+  let m=_dateIdxCache.get(kline);
+  if(!m){ m=new Map(); for(let i=0;i<kline.length;i++) m.set(kline[i][0],i); _dateIdxCache.set(kline,m); }
+  const v=m.get(date);
+  return v==null?-1:v;
+}
+function smaAt(kline, i, period){
+  if(i<period-1) return null;
+  let sum=0;
+  for(let j=i-period+1;j<=i;j++) sum+=kline[j][4];
+  return sum/period;
+}
+// 大盘是否走弱：突破当日大盘(SPY)收盘 >= 自身N日均线 视为"没有走弱"；无大盘数据时不拦截
+function marketNotWeak(indexKline, date, period){
+  if(!indexKline || !indexKline.length) return true;
+  const idx=dateIndex(indexKline, date);
+  if(idx<0) return true;
+  const sma=smaAt(indexKline, idx, period);
+  if(sma==null) return true;
+  return indexKline[idx][4] >= sma;
+}
+// 美股"期末机械放量日"标注：这些日子成交量放大主要来自指数调样/调仓等机械性资金流，
+// 不代表趋势信息，放量突破的可信度打折 -> 参考价值降一档并在列表打标签（只标注，不过滤）。
+// 覆盖：罗素重构(6月最后一个周五±1天) / 四巫日(3·6·9·12月第三个周五±1天) / 季末最后几天与季初头两天
+function usMechFlowFlag(dateStr){
+  const parts=dateStr.split('-').map(Number);
+  if(parts.length<3||!parts[0]) return '';
+  const [y,m,d]=parts;
+  const dim=new Date(Date.UTC(y,m,0)).getUTCDate();          // 当月天数
+  if(m===6){                                                  // 罗素重构：6月最后一个周五 ±1天
+    const lastDow=new Date(Date.UTC(y,m-1,dim)).getUTCDay();
+    const lastFri=dim-((lastDow-5+7)%7);
+    if(Math.abs(d-lastFri)<=1) return '罗素重构';
+  }
+  if(m===3||m===6||m===9||m===12){                            // 四巫日：第三个周五 ±1天
+    const firstDow=new Date(Date.UTC(y,m-1,1)).getUTCDay();
+    const thirdFri=1+((5-firstDow+7)%7)+14;
+    if(Math.abs(d-thirdFri)<=1) return '四巫日';
+    if(d>=dim-3) return '季末调仓';                            // 季末最后4个日历日(≈最后2-3个交易日)
+  }
+  if((m===1||m===4||m===7||m===10)&&d<=2) return '季初调仓';   // 新季度头两天也常有资金流入场
+  return '';
+}
+const TIER_ORDER=['较高','中等偏高','中等','较低'];
+function downgradeTier(t){ const i=TIER_ORDER.indexOf(t); return i<0?t:TIER_ORDER[Math.min(TIER_ORDER.length-1,i+1)]; }
+// 判定 i 是否是"平台/杯柄突破日"：横盘整理 + 放量突破 + 收盘靠近高位 + 大盘未走弱
+function evaluateUsBreakout(stock, i, params, indexKline){
+  const k=stock.kline, bw=params.usBaseWindow;
+  if(i-bw<0) return null;
+  let baseHigh=-Infinity, baseLow=Infinity, sumVol=0, sumDollarVol=0;
+  for(let j=i-bw;j<i;j++){
+    if(k[j][2]>baseHigh) baseHigh=k[j][2];
+    if(k[j][3]<baseLow) baseLow=k[j][3];
+    sumVol+=k[j][5]; sumDollarVol+=k[j][4]*k[j][5];
+  }
+  const baseAmp=(baseHigh-baseLow)/baseLow*100;
+  if(!(baseAmp < params.usBaseMaxAmp)) return null;          // 长期横盘/杯柄整理：振幅不能太大
+  const avgVol=sumVol/bw, avgDollarVol=sumDollarVol/bw;
+  if(params.usMinDollarVolM>0 && avgDollarVol < params.usMinDollarVolM*1e6) return null;  // 流动性过滤：日均成交额太小的票剔除
+  const [,,high,low,close,vol]=k[i];
+  const breakoutLevel=baseHigh;
+  if(!(close > breakoutLevel*(1+params.usBreakoutAbovePct/100))) return null;  // 放量突破平台(价)
+  if(!(avgVol>0 && vol >= avgVol*params.usBreakoutVolMult)) return null;       // 放量突破(量)
+  const closePos=(high>low)?(close-low)/(high-low)*100:100;
+  if(!(closePos >= params.usBreakoutClosePos)) return null;   // 收盘靠近当天高位
+  if(params.usMarketFilter && !marketNotWeak(indexKline, k[i][0], params.usMarketSma)) return null; // 大盘没有走弱
+
+  // 参考价值分层：成交额规模(代理大盘股/龙头/ETF) + 相对大盘强弱(代理"强势行业")
+  let rs=null;
+  if(indexKline && indexKline.length){
+    const idxNow=dateIndex(indexKline, k[i][0]), idxBase=dateIndex(indexKline, k[i-bw][0]);
+    if(idxNow>=0 && idxBase>=0 && indexKline[idxBase][4]>0){
+      const stockRet=(close-k[i-bw][4])/k[i-bw][4]*100;
+      const mktRet=(indexKline[idxNow][4]-indexKline[idxBase][4])/indexKline[idxBase][4]*100;
+      rs=stockRet-mktRet;
+    }
+  }
+  let tier='较低';
+  if(avgDollarVol >= params.usLargeCapDollarVolM*1e6) tier='较高';
+  else if(avgDollarVol >= params.usMidCapDollarVolM*1e6) tier=(rs!=null&&rs>0)?'中等偏高':'中等';
+  const calFlag=usMechFlowFlag(k[i][0]);
+  if(calFlag) tier=downgradeTier(tier);   // 期末机械放量窗口：放量可信度打折，参考价值降一档
+  return { i, date:k[i][0], changePct:changePctAt(k,i), breakoutLevel, baseAmp,
+    avgDollarVol, volMult:avgVol?vol/avgVol:null, relStrength:rs, tier, calFlag };
+}
+// 回踩观察 + 买入：status='observing'|'failed'|'buyable'|'buy'
+function evaluateUsPullback(stock, brk, params){
+  const k=stock.kline, i=brk.i, obs=params.usPullbackDays, lastObs=i+obs, useLow=params.usPullbackUseLow;
+  const floor=brk.breakoutLevel*(1-params.usPullbackHoldPct/100);   // 正数=容忍比突破位低X%（与参数说明一致）
+  if(lastObs>=k.length){
+    for(let j=i+1;j<k.length;j++){ const v=useLow?k[j][3]:k[j][4]; if(v<floor) return {status:'failed',reason:'broke'}; }
+    return {status:'observing', daysObserved:k.length-1-i};
+  }
+  for(let j=i+1;j<=lastObs;j++){
+    if(!(k[j][5]>0)) return {status:'failed',reason:'novol'};   // 停牌/僵尸股：回踩观察期出现0成交量,不能当作"缩量"通过(否则 volRatio=0 恒<阈值 -> 假信号)
+    const v=useLow?k[j][3]:k[j][4]; if(v<floor) return {status:'failed',reason:'broke'};
+  }
+  const volRatio=k[i][5]?k[lastObs][5]/k[i][5]:Infinity;
+  if(!(volRatio<params.usPullbackVolMult)) return {status:'failed',reason:'volume',volRatio};
+  const buyIdx=lastObs+1;
+  if(buyIdx>=k.length) return {status:'buyable', volRatio, d3Idx:lastObs};
+  return {status:'buy', volRatio, d3Idx:lastObs, buyIdx, buyDate:k[buyIdx][0], buyPrice:k[buyIdx][1]};
+}
+// 模拟交易：止盈(买入价+X%) / 止损(突破位下方Y%，而非买入价-5%) / 超时
+function simulateUsTrade(stock, buyIdx, buyPrice, breakoutLevel, params){
+  const k=stock.kline;
+  const tp=buyPrice*(1+params.usTakeProfit/100);
+  const sl=breakoutLevel*(1-params.usStopBelowBreakoutPct/100);
+  const end=Math.min(k.length-1, buyIdx+params.usMaxHold);
+  function mkExit(type,j){ const price=type==='stop'?sl:tp;
+    return {exit:type, sellIdx:j, sellDate:k[j][0], sellPrice:price, ret:(price-buyPrice)/buyPrice*100, holdDays:j-buyIdx}; }
+  for(let j=buyIdx;j<=end;j++){
+    const high=k[j][2], low=k[j][3], hitSL=low<=sl, hitTP=high>=tp;
+    if(hitSL&&hitTP) return mkExit('stop',j);
+    if(hitSL) return mkExit('stop',j);
+    if(hitTP) return mkExit('profit',j);
+  }
+  const sp=k[end][4];
+  return {exit:'timeout', sellIdx:end, sellDate:k[end][0], sellPrice:sp, ret:(sp-buyPrice)/buyPrice*100, holdDays:end-buyIdx};
+}
+function scanUsStock(stock, params, indexKline){
+  const k=stock.kline;
+  if(!k||k.length<params.usBaseWindow+5) return null;
+  const lo=Math.max(params.usBaseWindow, k.length-(params.usPullbackDays+params.scanRecent));
+  let best=null;
+  for(let i=k.length-2;i>=lo;i--){
+    const brk=evaluateUsBreakout(stock,i,params,indexKline); if(!brk) continue;
+    const buy=evaluateUsPullback(stock,brk,params); if(buy.status==='failed') continue;
+    let state=null;
+    if(buy.status==='buy'||buy.status==='buyable') state='可买入';
+    else if(buy.status==='observing') state='观察中';
+    if(!state) continue;
+    const rec={ code:stock.code, name:stock.name, market:stock.market, board:stock.board,
+      d0Date:brk.date, changePct:brk.changePct, breakoutLevel:brk.breakoutLevel, baseAmp:brk.baseAmp,
+      volRatio:(buy.volRatio!=null?buy.volRatio:null), curPrice:k[k.length-1][4], state, d0Idx:brk.i,
+      tier:brk.tier, relStrength:brk.relStrength, calFlag:brk.calFlag };
+    if(!best||rec.d0Idx>best.d0Idx) best=rec;
+  }
+  return best;
+}
+function backtestCnStock(s, params, start, end){
+  const trades=[];
+  const k=s.kline; if(!k||k.length<10) return trades;
+  let i=1;
+  while(i<k.length){
+    const d0=evaluateD0(s,i,params); if(!d0){ i++; continue; }
+    if(start&&d0.date<start){ i++; continue; }
+    if(end&&d0.date>end){ i++; continue; }
+    const buy=evaluateBuy(s,d0,params); if(buy.status!=='buy'){ i++; continue; }
+    const ex=simulateTrade(s,buy.buyIdx,buy.buyPrice,params);
+    trades.push({ code:s.code, name:s.name, market:s.market, board:s.board, d0Date:d0.date,
+      changePct:d0.changePct, buyDate:buy.buyDate, buyPrice:buy.buyPrice, volRatio:buy.volRatio,
+      sellDate:ex.sellDate, sellPrice:ex.sellPrice, ret:ex.ret, exit:ex.exit, holdDays:ex.holdDays });
+    i=Math.max(ex.sellIdx+1, i+1);
+  }
+  return trades;
+}
+function backtestUsStock(s, params, start, end, indexKline){
+  const trades=[];
+  const k=s.kline; if(!k||k.length<params.usBaseWindow+10) return trades;
+  let i=params.usBaseWindow;
+  while(i<k.length){
+    const brk=evaluateUsBreakout(s,i,params,indexKline); if(!brk){ i++; continue; }
+    if(start&&brk.date<start){ i++; continue; }
+    if(end&&brk.date>end){ i++; continue; }
+    const buy=evaluateUsPullback(s,brk,params); if(buy.status!=='buy'){ i++; continue; }
+    const ex=simulateUsTrade(s,buy.buyIdx,buy.buyPrice,brk.breakoutLevel,params);
+    trades.push({ code:s.code, name:s.name, market:s.market, board:s.board, d0Date:brk.date,
+      changePct:brk.changePct, buyDate:buy.buyDate, buyPrice:buy.buyPrice, volRatio:buy.volRatio,
+      sellDate:ex.sellDate, sellPrice:ex.sellPrice, ret:ex.ret, exit:ex.exit, holdDays:ex.holdDays,
+      tier:brk.tier, calFlag:brk.calFlag });
+    i=Math.max(ex.sellIdx+1, i+1);
+  }
+  return trades;
+}
+
+
+/* ============================================================
+ *                          UI 层
+ * ============================================================ */
+// 每项 mk 标记适用市场：'HK' 只港股显示，'US' 只美股显示，'both' 两者都显示。
+// 参数面板按当前所选市场(港股/美股)只显示对应那套规则。
+const PARAM_DEFS=[
+  /* ===================== 港股：低位首板回踩缩量 ===================== */
+  {g:'港股 · 启动信号',mk:'HK'},
+  {k:'thHK',l:'单日大涨阈值 (%)',mk:'HK',h:'港股没有涨停板：当天涨幅超过这个百分比，就当作“放量启动(D0)”信号（默认9%）'},
+  {g:'港股 · 形态条件（低位 + 长期横盘 + 第一次启动）',mk:'HK'},
+  {k:'firstBoardLookback',l:'首板回看天数',mk:'HK',h:'往回看多少天，要求这段时间没启动过，确保这次是“第一次”（默认60天）'},
+  {k:'lowWindow',l:'低位窗口',mk:'HK',h:'用过去多少天来衡量股价的高低区间（默认250天，约一年）'},
+  {k:'lowPct',l:'低位分位 (%)',mk:'HK',h:'股价要处在过去一年区间的低位。数字越小越苛刻——30 表示要在最低30%的位置才算“低位”'},
+  {k:'flatWindow',l:'横盘窗口',mk:'HK',h:'看启动前多少天是不是在“横盘”（默认30天）'},
+  {k:'flatAmp',l:'横盘振幅阈值 (%)',mk:'HK',h:'启动前那段时间股价上下波动要小于这个百分比，才算真的“横盘”（默认25%）'},
+  {k:'minAmtHK',l:'最低日均成交额 (万港元/日)',mk:'HK',h:'流动性门槛：横盘期日均成交额低于这个值就剔除，过滤掉仙股/僵尸股这类没法交易的票（默认100万港元/天；调 0 关闭）'},
+  {g:'港股 · 观察 + 买入',mk:'HK'},
+  {k:'obsDays',l:'观察天数',mk:'HK',h:'启动后先观察几天，不马上买（默认3天）'},
+  {k:'shrinkRatio',l:'缩量比',mk:'HK',h:'观察期成交量要缩到启动那天的几成以下，才算“缩量回踩”（默认0.7＝缩到七成以下）'},
+  {k:'notBreakUseLow',l:'不跌破基准',mk:'HK',type:'select',opts:[['false','收盘价'],['true','最低价']],h:'判断“有没有跌破启动价”时，看当天收盘价还是当天最低价。选最低价更严格'},
+  {g:'港股 · 交易（怎么卖）',mk:'HK'},
+  {k:'takeProfit',l:'止盈 (%)',mk:'HK',h:'买入后涨到这个百分比就卖出获利（默认+20%）'},
+  {k:'stopLoss',l:'止损 (%)',mk:'HK',h:'买入后跌到这个百分比就止损卖出（默认-5%）'},
+  {k:'maxHold',l:'最长持有 (日)',mk:'HK',h:'最多拿多少个交易日；到期还没止盈也没止损，就平仓离场（默认30天）'},
+  /* ===================== 美股：平台/杯柄突破 ===================== */
+  {g:'美股 · 平台/杯柄突破形态',mk:'US'},
+  {k:'usBaseWindow',l:'整理窗口(日)',mk:'US',h:'美股：看突破前多少天的横盘/杯柄整理（默认50天）'},
+  {k:'usBaseMaxAmp',l:'整理振幅上限 (%)',mk:'US',h:'美股：这段整理期股价波动要小于这个百分比，才算“整理充分”（默认35%）'},
+  {k:'usBreakoutVolMult',l:'突破放量倍数',mk:'US',h:'美股：突破那天成交量要放大到整理期日均量的几倍（默认1.5倍＝至少放量五成）'},
+  {k:'usBreakoutClosePos',l:'收盘位置下限 (%)',mk:'US',h:'美股：突破那天要收在接近当天最高点。数字越大越靠上——75＝收在当天价格区间的上四分之一'},
+  {k:'usBreakoutAbovePct',l:'突破幅度下限 (%)',mk:'US',h:'美股：收盘价要比整理区间的最高点再高出多少（默认0＝只要站上去就行）'},
+  {g:'美股 · 回踩确认 + 大盘过滤',mk:'US'},
+  {k:'usPullbackDays',l:'回踩观察天数',mk:'US',h:'美股：突破后观察几天的回踩（默认5天）'},
+  {k:'usPullbackVolMult',l:'回踩缩量倍数',mk:'US',h:'美股：回踩时成交量要缩到突破那天的几成以下（默认0.7）'},
+  {k:'usPullbackHoldPct',l:'允许跌破突破位 (%)',mk:'US',h:'美股：回踩时允许比突破位低多少还算“没破”（默认0＝一点都不许破）'},
+  {k:'usPullbackUseLow',l:'回踩不破基准',mk:'US',type:'select',opts:[['false','收盘价'],['true','最低价']],h:'美股：判断有没有跌破突破位，看收盘价还是当天最低价'},
+  {k:'usMarketFilter',l:'大盘过滤(用SPY)',mk:'US',type:'select',opts:[['true','启用'],['false','关闭']],h:'美股：开启后，只在大盘(标普SPY)没走弱时才认这个信号'},
+  {k:'usMarketSma',l:'大盘均线周期(日)',mk:'US',h:'美股：用大盘的多少日均线判断强弱（默认50日；大盘收在均线上方＝没走弱）'},
+  {g:'美股 · 交易 + 参考价值分层',mk:'US'},
+  {k:'usStopBelowBreakoutPct',l:'止损(突破位下方 %)',mk:'US',h:'美股：止损设在“突破位往下”这个百分比，而不是买入价固定-5%（默认3%）'},
+  {k:'usTakeProfit',l:'止盈 (%)',mk:'US',h:'美股：买入后涨这么多就止盈（默认+20%）'},
+  {k:'usMaxHold',l:'最长持有 (日)',mk:'US',h:'美股：最多持有多少个交易日（默认60天）'},
+  {k:'usLargeCapDollarVolM',l:'大盘股成交额阈值(百万美元/日)',mk:'US',h:'美股：每天成交额超过这个金额就算“大盘/龙头股”，参考价值标“较高”（默认30＝3000万美元/天）'},
+  {k:'usMidCapDollarVolM',l:'中盘股成交额阈值(百万美元/日)',mk:'US',h:'美股：每天成交额超过这个就算“中盘股”（默认3＝300万美元/天）'},
+  {k:'usMinDollarVolM',l:'最低日均成交额(百万美元/日)',mk:'US',h:'流动性门槛：日均成交额低于这个值就剔除，过滤掉太冷门没法交易的票（默认1＝100万美元/天；调 0 关闭）'},
+  /* ===================== 通用 ===================== */
+  {g:'通用 · 扫描',mk:'both'},
+  {k:'scanRecent',l:'扫描最近天数',mk:'both',h:'选股只看最近这几天冒出来的信号，保证是“现在能操作”的（默认5天）'},
+];
+
+const state={ market:'HK', params:{...DEFAULT_PARAMS}, datasets:{}, autoLoaded:{}, scanRows:[], scanSort:{key:'volRatio',dir:1}, btResult:null, btSort:{key:'buyDate',dir:1}, chart:null };
+
+const $=s=>document.querySelector(s);
+const fmt=(x,d=2)=> (x==null||!isFinite(x))?'-':Number(x).toFixed(d);
+// 数据文件里的名称来自外部源(Yahoo等)，插入innerHTML前必须转义，防止含 < & " 的名称破坏表格结构
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const boardName=b=>({main:'主板',gem:'创业板',star:'科创板',bse:'北交所',hk:'港股',us:'美股'}[b]||b||'-');
+
+/* ---- 参数面板 ---- */
+function renderParams(){
+  const g=$('#pgrid'); g.innerHTML='';
+  const mkt=state.market;
+  for(const d of PARAM_DEFS){
+    if(d.mk && d.mk!=='both' && d.mk!==mkt) continue;   // 只显示当前市场(港股/美股)那套规则
+    if(d.g){ const e=document.createElement('div'); e.className='pgroup'; e.textContent=d.g; g.appendChild(e); continue; }
+    const wrap=document.createElement('div'); wrap.className='field';
+    const lab=document.createElement('label'); lab.textContent=d.l; wrap.appendChild(lab);
+    let inp;
+    if(d.type==='select'){
+      inp=document.createElement('select');
+      for(const [val,txt] of d.opts){ const o=document.createElement('option'); o.value=val; o.textContent=txt; inp.appendChild(o); }
+      inp.value=String(state.params[d.k]);
+    } else {
+      inp=document.createElement('input'); inp.type='number'; inp.step='any'; inp.value=state.params[d.k];
+    }
+    inp.dataset.k=d.k; wrap.appendChild(inp);
+    if(d.h){ const ph=document.createElement('div'); ph.className='ph'; ph.textContent=d.h; wrap.appendChild(ph); }
+    g.appendChild(wrap);
+  }
+}
+const BOOL_PARAM_KEYS=['notBreakUseLow','usPullbackUseLow','usMarketFilter'];
+function collectParams(){
+  const p={...state.params};
+  $('#pgrid').querySelectorAll('[data-k]').forEach(inp=>{
+    const k=inp.dataset.k;
+    if(BOOL_PARAM_KEYS.includes(k)) p[k]=(inp.value==='true');
+    else { const v=parseFloat(inp.value); if(isFinite(v)) p[k]=v; }   // 留空/输错不产生NaN(NaN会让所有比较为false→信号全部静默消失)，保留原值
+  });
+  return p;
+}
+
+/* ---- 数据加载 ---- */
+function currentStocks(){
+  const ds=state.datasets[state.market];
+  return ds&&ds.stocks?ds.stocks:[];
+}
+function currentIndexKline(){
+  const ds=state.datasets.US;
+  return (ds&&ds.index&&ds.index.kline)?ds.index.kline:null;
+}
+function isLite(){ const ds=state.datasets[state.market]; return !!(ds&&ds.lite); }
+function updateDataMeta(){
+  const ds=state.datasets[state.market];
+  if(ds&&ds.lite){
+    const L=ds.lite;
+    $('#dataMeta').innerHTML=`<b style="color:var(--accent)">轻量模式</b> · 云端已扫全市场 <b>${L.stock_count}</b> 只 · 数据 <b>${L.data_range[0]} ~ ${L.data_range[1]}</b> · 云端计算于 <b>${L.generated_at}</b>`;
+    return;
+  }
+  if(!ds||!ds.stocks||!ds.stocks.length){
+    $('#dataMeta').innerHTML='<b style="color:var(--amber)">未加载数据</b> · 请双击「启动工具.command」打开（会自动读取最新数据），或点「加载数据文件」手动选入 data_HK.json / data_US.json';
+    return;
+  }
+  let minD='9999',maxD='0';
+  for(const s of ds.stocks){ const k=s.kline; if(k&&k.length){ if(k[0][0]<minD)minD=k[0][0]; if(k[k.length-1][0]>maxD)maxD=k[k.length-1][0]; } }
+  $('#dataMeta').innerHTML=`已加载 <b>${ds.stocks.length}</b> 只 · 数据范围 <b>${minD} ~ ${maxD}</b> · 来源 真实数据 · 更新于 <b>${ds.generated_at||'-'}</b>`;
+}
+// 自动加载：从同目录 fetch data_<market>.json（需通过本地服务器打开，见「启动工具.command」）。
+// 双击 file:// 打开时浏览器会拦截本地 fetch，静默失败并显示"未加载数据"提示（不再有任何演示假数据）。
+async function tryAutoLoad(market, force){
+  if(state.autoLoaded[market] && !force){
+    const d=state.datasets[market];
+    return !!(d && d.stocks && d.stocks.length);
+  }
+  try{
+    const resp=await fetch('./data_'+market+'.json', {cache:'no-store'});
+    if(!resp.ok) throw new Error('HTTP '+resp.status);
+    const obj=await resp.json();
+    const mk=obj.market||market;
+    (obj.stocks||[]).forEach(s=>{ s.market=mk; });
+    state.datasets[mk]={...obj, market:mk};
+    state.autoLoaded[mk]=true;
+    return true;
+  }catch(e){ /* 全量数据不存在(如部署在 Pages 上) -> 退而尝试云端预计算的轻量包 */ }
+  try{
+    const resp=await fetch('./lite_'+market+'.json', {cache:'no-store'});
+    if(!resp.ok) throw new Error('HTTP '+resp.status);
+    const lite=await resp.json();
+    // 轻量包只带命中股票的K线窗口，拼成 stocks 供「查看K线」用；扫描/体检结果直接用云端算好的
+    const stocks=Object.entries(lite.charts||{}).map(([code,c])=>({code, name:c.name, board:c.board, market, kline:c.kline}));
+    state.datasets[market]={market, stocks, lite};
+    state.autoLoaded[market]=true;
+    return true;
+  }catch(e){
+    state.autoLoaded[market]=true;   // 标记已尝试，避免每次切换都重试卡顿
+    return false;
+  }
+}
+async function switchMarket(market){
+  state.market=market;
+  document.querySelectorAll('#marketSeg button').forEach(b=>b.classList.toggle('active',b.dataset.m===market));
+  renderParams();   // 参数面板切到该市场那套规则
+  const ds=state.datasets[market];
+  const hasData = ds && ds.stocks && ds.stocks.length;
+  if(!hasData){
+    $('#dataMeta').innerHTML='正在读取本地最新数据…';
+    await tryAutoLoad(market);   // 成功→填入真实数据；失败(file://)→保持无数据，由 updateDataMeta 给提示
+  }
+  updateDataMeta(); runScan(); btGen++; state.btResult=null;
+  if(isLite()) runBacktest();   // 轻量模式体检是现成结果，直接展示，不用等用户点按钮
+  else renderBt();
+}
+function handleFile(file){
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const obj=JSON.parse(r.result);
+      const mk=obj.market||state.market;
+      (obj.stocks||[]).forEach(s=>{ s.market=mk; });
+      state.datasets[mk]={...obj, market:mk};
+      state.market=mk;
+      document.querySelectorAll('#marketSeg button').forEach(b=>b.classList.toggle('active',b.dataset.m===mk));
+      updateDataMeta(); runScan(); btGen++; state.btResult=null; renderBt();
+    }catch(e){ alert('解析失败：'+e.message); }
+  };
+  r.readAsText(file);
+}
+
+/* ---- Tab1 扫描 ---- */
+let scanGen=0;   // 代计数：切市场/重扫时旧的分批任务作废，防止旧结果覆盖新表格
+function runScan(){
+  const gen=++scanGen;
+  if(isLite()){   // 轻量模式：扫描已在云端完成，直接展示结果
+    state.scanRows=state.datasets[state.market].lite.scan||[];
+    $('#scanProg').classList.remove('on');
+    renderScan(); return;
+  }
+  const stocks=currentStocks();
+  const indexKline=currentIndexKline();
+  const prog=$('#scanProg'); prog.classList.add('on'); const bar=prog.querySelector('i'); bar.style.width='0%';
+  const params=state.params; const out=[]; let idx=0; const batch=200;
+  function step(){
+    if(gen!==scanGen) return;
+    const end=Math.min(idx+batch, stocks.length);
+    for(;idx<end;idx++){ const r=scanStock(stocks[idx],params,indexKline); if(r) out.push(r); }
+    bar.style.width=(stocks.length?Math.round(idx/stocks.length*100):100)+'%';
+    if(idx<stocks.length){ setTimeout(step,0); }
+    else { prog.classList.remove('on'); state.scanRows=out; renderScan(); }
+  }
+  step();
+}
+function renderScan(){
+  // 参考价值筛选只对美股有意义，其它市场隐藏该下拉
+  $('#scanTier').style.display = state.market==='US' ? '' : 'none';
+  const q=$('#scanSearch').value.trim().toLowerCase();
+  const fState=$('#scanState').value, fTier=$('#scanTier').value;
+  const pMin=parseFloat($('#scanPriceMin').value), pMax=parseFloat($('#scanPriceMax').value);
+  let rows=state.scanRows.filter(r=>
+    (!q || r.code.toLowerCase().includes(q) || (r.name||'').toLowerCase().includes(q))
+    && (!fState || r.state===fState)
+    && (state.market!=='US' || !fTier || r.tier===fTier)
+    && (!isFinite(pMin) || r.curPrice>=pMin)
+    && (!isFinite(pMax) || r.curPrice<=pMax)
+  );
+  const sk=state.scanSort.key, dir=state.scanSort.dir;
+  rows.sort((a,b)=>{ let x=a[sk],y=b[sk]; if(x==null)x=Infinity; if(y==null)y=Infinity;
+    if(typeof x==='string') return dir*(x<y?-1:x>y?1:0); return dir*(x-y); });
+  const filtered = rows.length!==state.scanRows.length;
+  $('#scanMeta').textContent=(filtered?`筛选后 ${rows.length} / 命中 ${state.scanRows.length} 只`:`命中 ${rows.length} 只`)
+    +`（可买入 ${rows.filter(r=>r.state==='可买入').length} · 观察中 ${rows.filter(r=>r.state==='观察中').length}）`;
+  const wrap=$('#scanWrap');
+  const emptyHint=state.market==='US'
+    ?'可放宽参数（提高整理振幅上限/降低放量倍数/降低收盘位置下限），或加载更多数据'
+    :'可放宽参数（提高低位分位/横盘振幅/缩量比），或加载更多数据';
+  if(!rows.length){
+    if(state.scanRows.length){ wrap.innerHTML=`<div class="empty"><div class="big">○</div>筛选条件下没有匹配的票（共命中 ${state.scanRows.length} 只）<br><span class="hint">点「清空筛选」查看全部</span></div>`; }
+    else { wrap.innerHTML=`<div class="empty"><div class="big">○</div>当前市场没有处于「观察期 / 可买入」的票<br><span class="hint">${emptyHint}</span></div>`; }
+    return;
+  }
+  const isUS=state.market==='US';
+  const cols=isUS
+    ? [['code','代码','l'],['name','名称','l'],['d0Date','突破日','l'],
+       ['changePct','突破日涨幅%'],['breakoutLevel','突破位'],['baseAmp','整理振幅%'],
+       ['volRatio','回踩缩量比'],['curPrice','当前价'],['tier','参考价值','l'],['calFlag','期末窗口','l'],['state','信号','l']]
+    : [['code','代码','l'],['name','名称','l'],['board','市场/板块','l'],['d0Date','D0日期','l'],
+       ['changePct','D0涨幅%'],['lowPctValue','低位分位%'],['flatAmp','横盘振幅%'],['volRatio','缩量比'],['curPrice','当前价'],['state','信号','l']];
+  let h='<table><thead><tr>';
+  for(const [k,t,l] of cols) h+=`<th class="${l||''}" data-sort="${k}">${t}${state.scanSort.key===k?(state.scanSort.dir>0?' ▲':' ▼'):''}</th>`;
+  h+='<th class="l">K线</th></tr></thead><tbody>';
+  const tierCls={'较高':'buy','中等偏高':'buy','中等':'obs','较低':'timeout'};
+  for(const r of rows){
+    const tag=r.state==='可买入'?'buy':'obs';
+    if(isUS){
+      h+=`<tr><td class="l">${esc(r.code)}</td><td class="l">${esc(r.name)}</td><td class="l">${r.d0Date}</td>`
+        +`<td>${fmt(r.changePct,1)}</td><td>${fmt(r.breakoutLevel,2)}</td><td>${fmt(r.baseAmp,1)}</td>`
+        +`<td>${r.volRatio!=null?fmt(r.volRatio,2):'-'}</td><td>${fmt(r.curPrice,2)}</td>`
+        +`<td class="l"><span class="tag ${tierCls[r.tier]||''}">${r.tier}</span></td>`
+        +`<td class="l">${r.calFlag?`<span class="tag timeout" title="突破日落在期末机械放量窗口，放量可信度打折，参考价值已降一档">${r.calFlag}</span>`:'-'}</td>`
+        +`<td class="l"><span class="tag ${tag}">${r.state}</span></td>`
+        +`<td class="l"><a class="link" data-chart data-code="${r.code}" data-market="${r.market}" data-d0="${r.d0Date||''}">查看K线</a></td></tr>`;
+    } else {
+      h+=`<tr><td class="l">${esc(r.code)}</td><td class="l">${esc(r.name)}</td><td class="l">${r.market}/${boardName(r.board)}</td>`
+        +`<td class="l">${r.d0Date}</td><td>${fmt(r.changePct,1)}</td><td>${fmt(r.lowPctValue,0)}</td>`
+        +`<td>${fmt(r.flatAmp,1)}</td><td>${r.volRatio!=null?fmt(r.volRatio,2):'-'}</td><td>${fmt(r.curPrice,2)}</td>`
+        +`<td class="l"><span class="tag ${tag}">${r.state}</span></td>`
+        +`<td class="l"><a class="link" data-chart data-code="${r.code}" data-market="${r.market}" data-d0="${r.d0Date||''}">查看K线</a></td></tr>`;
+    }
+  }
+  h+='</tbody></table>'; wrap.innerHTML=h;
+  wrap.querySelectorAll('th[data-sort]').forEach(th=>th.onclick=()=>{
+    const k=th.dataset.sort; if(state.scanSort.key===k) state.scanSort.dir*=-1; else { state.scanSort.key=k; state.scanSort.dir=1; }
+    renderScan();
+  });
+}
+
+/* ---- Tab2 信号体检 ---- */
+let btGen=0;   // 同 scanGen：作废切市场后仍在跑的旧体检任务
+function runBacktest(){
+  const gen=++btGen;
+  if(isLite()){   // 轻量模式：体检为云端预计算的全历史结果（区间选择在手机版不生效）
+    const L=state.datasets[state.market].lite;
+    state.btResult={ trades:L.trades_recent||[], stats:L.stats,
+      liteTier:L.tierStats, liteCal:L.calStats, tradesTotal:L.trades_total, lite:true };
+    renderBt(); return;
+  }
+  const stocks=currentStocks();
+  const indexKline=currentIndexKline();
+  const range={ start:$('#btStart').value||null, end:$('#btEnd').value||null };
+  const prog=$('#btProg'); prog.classList.add('on'); const bar=prog.querySelector('i'); bar.style.width='0%';
+  const params=state.params; const all=[]; let idx=0; const batch=150;
+  function step(){
+    if(gen!==btGen) return;
+    const end=Math.min(idx+batch, stocks.length);
+    const slice=stocks.slice(idx,end);
+    const r=backtest(slice, params, range, indexKline);
+    all.push(...r.trades);
+    idx=end; bar.style.width=(stocks.length?Math.round(idx/stocks.length*100):100)+'%';
+    if(idx<stocks.length) setTimeout(step,0);
+    else {
+      all.sort((a,b)=> a.buyDate<b.buyDate?-1:a.buyDate>b.buyDate?1:0);
+      state.btResult={ trades:all, stats:computeStats(all) };
+      prog.classList.remove('on'); renderBt();
+    }
+  }
+  step();
+}
+function renderBt(){
+  const res=state.btResult;
+  const cards=$('#btCards'), wrap=$('#btWrap');
+  const exitBox=$('#exitDistBox'), tierBox=$('#tierBox'), calBox=$('#calBox');
+  if(!res){
+    cards.innerHTML=''; exitBox.style.display='none'; tierBox.style.display='none'; calBox.style.display='none';
+    wrap.innerHTML=`<div class="empty"><div class="big">▷</div>选择区间后点击「运行体检」<br><span class="hint">对当前市场每个历史信号在其买点等额独立跟踪到止盈/止损/超时，只看「选出来的票后续怎么走」</span></div>`;
+    $('#btMeta').textContent=''; return;
+  }
+  const s=res.stats;
+  const pf=isFinite(s.profitFactor)?fmt(s.profitFactor,2):'∞';
+  const cls=x=>x>0?'green':x<0?'red':'';
+  cards.innerHTML=[
+    ['信号数', s.count, ''],
+    ['胜率', fmt(s.winRate,1)+'%', s.winRate>=50?'green':'amber'],
+    ['平均每笔收益', fmt(s.avgRet,2)+'%', cls(s.avgRet)],
+    ['盈亏比', pf, s.profitFactor>=1?'green':'red'],
+    ['止盈占比', fmt(s.exits.profit.pct,1)+'%', 'green'],
+    ['止损占比', fmt(s.exits.stop.pct,1)+'%', 'red'],
+  ].map(([k,v,c])=>`<div class="card"><div class="k">${k}</div><div class="v ${c}">${v}</div></div>`).join('');
+  $('#btMeta').textContent=`盈 ${s.wins} / 亏 ${s.losses} · 均盈 ${fmt(s.avgWin,2)}% · 均亏 ${fmt(s.avgLoss,2)}%`
+    +(res.lite?` · 轻量模式：统计为云端全历史预计算，明细仅最近 ${res.trades.length}/${res.tradesTotal||res.trades.length} 笔`:'');
+  renderExitDist(s.exits, $('#btExitDist')); exitBox.style.display='block';   // 渲染进内层容器，别覆盖盒子自带的<h3>标题
+  if(state.market==='US'){
+    renderTierTable(res.trades, $('#btTierTable'), res.liteTier); tierBox.style.display='block';
+    renderCalTable(res.trades, $('#btCalTable'), res.liteCal); calBox.style.display='block';
+  }
+  else { tierBox.style.display='none'; calBox.style.display='none'; }
+  // 交易明细
+  let rows=res.trades.slice();
+  const sk=state.btSort.key, dir=state.btSort.dir;
+  rows.sort((a,b)=>{ let x=a[sk],y=b[sk]; if(typeof x==='string') return dir*(x<y?-1:x>y?1:0); return dir*(x-y); });
+  if(!rows.length){ wrap.innerHTML=`<div class="empty"><div class="big">○</div>该区间内没有产生交易</div>`; return; }
+  const exitMap={profit:['profit','止盈'],stop:['stop','止损'],timeout:['timeout','超时']};
+  const isUSbt=state.market==='US';
+  const cols=[['code','代码','l'],['name','名称','l'],['board','市场','l'],['d0Date',isUSbt?'突破日':'D0','l'],
+    ['buyDate','买入日','l'],['buyPrice','买入价'],['sellDate','卖出日','l'],['sellPrice','卖出价'],
+    ['holdDays','持有'],['ret','收益%'],['exit','退出','l']];
+  if(isUSbt) cols.push(['tier','参考价值','l'],['calFlag','期末窗口','l']);
+  let h='<table><thead><tr>';
+  for(const [k,t,l] of cols) h+=`<th class="${l||''}" data-sort="${k}">${t}${state.btSort.key===k?(state.btSort.dir>0?' ▲':' ▼'):''}</th>`;
+  h+='<th class="l">K线</th></tr></thead><tbody>';
+  const tierCls={'较高':'buy','中等偏高':'buy','中等':'obs','较低':'timeout'};
+  for(const t of rows){
+    const [cl,tx]=exitMap[t.exit]||['',t.exit];
+    h+=`<tr><td class="l">${esc(t.code)}</td><td class="l">${esc(t.name)}</td><td class="l">${t.market}/${boardName(t.board)}</td>`
+      +`<td class="l">${t.d0Date}</td><td class="l">${t.buyDate}</td><td>${fmt(t.buyPrice,2)}</td>`
+      +`<td class="l">${t.sellDate}</td><td>${fmt(t.sellPrice,2)}</td><td>${t.holdDays}</td>`
+      +`<td class="${t.ret>=0?'pos':'neg'}">${fmt(t.ret,2)}</td><td class="l"><span class="tag ${cl}">${tx}</span></td>`;
+    if(isUSbt) h+=`<td class="l"><span class="tag ${tierCls[t.tier]||''}">${t.tier||'-'}</span></td>`
+      +`<td class="l">${t.calFlag?`<span class="tag timeout">${t.calFlag}</span>`:'-'}</td>`;
+    h+=`<td class="l"><a class="link" data-chart data-code="${t.code}" data-market="${t.market}" data-d0="${t.d0Date||''}"`
+      +` data-buy="${t.buyDate||''}" data-buyprice="${t.buyPrice}" data-sell="${t.sellDate||''}" data-sellprice="${t.sellPrice}">查看K线</a></td></tr>`;
+  }
+  h+='</tbody></table>'; wrap.innerHTML=h;
+  wrap.querySelectorAll('th[data-sort]').forEach(th=>th.onclick=()=>{
+    const k=th.dataset.sort; if(state.btSort.key===k) state.btSort.dir*=-1; else { state.btSort.key=k; state.btSort.dir=1; }
+    renderBt();
+  });
+}
+
+/* ---- 退出方式分布（止盈/止损/超时 各自笔数·占比·平均收益，横条呈现） ---- */
+function renderExitDist(exits, box){
+  const meta=[['profit','止盈','var(--green)'],['stop','止损','var(--red)'],['timeout','超时','var(--muted)']];
+  const maxPct=Math.max(1, ...meta.map(([k])=>exits[k].pct));
+  let h='<div class="exitdist">';
+  for(const [key,label,color] of meta){
+    const e=exits[key];
+    const barW=e.n?Math.max(3, e.pct/maxPct*100):0;
+    const rc=e.avgRet>0?'pos':e.avgRet<0?'neg':'';
+    h+=`<div class="exitrow">`
+      +`<div class="exitlab">${label}</div>`
+      +`<div class="exitbarwrap"><div class="exitbar" style="width:${barW}%;background:${color}"></div></div>`
+      +`<div class="exitnum">${e.n} 笔 · ${fmt(e.pct,1)}% · 均收益 <span class="${rc}">${fmt(e.avgRet,2)}%</span></div>`
+      +`</div>`;
+  }
+  h+='</div>';
+  box.innerHTML=h;
+}
+/* ---- 美股期末调仓窗口对比表 ---- */
+function renderCalTable(trades, box, preRows){
+  const rows=preRows||computeCalStats(trades);   // 轻量模式用云端算好的（本地明细被截断,不能重算）
+  let h='<table><thead><tr><th class="l">信号类型</th><th>交易数</th><th>胜率</th><th>平均收益%</th></tr></thead><tbody>';
+  for(const r of rows){
+    const wr=r.n?`<span class="${r.winRate>=50?'pos':''}">${fmt(r.winRate,1)}%</span>`:'-';
+    const av=r.n?`<span class="${r.avgRet>0?'pos':r.avgRet<0?'neg':''}">${fmt(r.avgRet,2)}</span>`:'-';
+    h+=`<tr><td class="l"><span class="tag ${r.label==='期末窗口信号'?'obs':'buy'}">${r.label}</span></td>`
+      +`<td>${r.n}</td><td>${wr}</td><td>${av}</td></tr>`;
+  }
+  h+='</tbody></table>';
+  box.innerHTML=h;
+}
+/* ---- 美股参考价值分层对比表 ---- */
+function renderTierTable(trades, box, preRows){
+  const rows=preRows||computeTierStats(trades);   // 轻量模式用云端算好的
+  const tierCls={'较高':'buy','中等偏高':'buy','中等':'obs','较低':'timeout'};
+  let h='<table><thead><tr><th class="l">参考价值</th><th>交易数</th><th>胜率</th><th>平均收益%</th></tr></thead><tbody>';
+  for(const r of rows){
+    const wr=r.n?`<span class="${r.winRate>=50?'pos':''}">${fmt(r.winRate,1)}%</span>`:'-';
+    const av=r.n?`<span class="${r.avgRet>0?'pos':r.avgRet<0?'neg':''}">${fmt(r.avgRet,2)}</span>`:'-';
+    h+=`<tr><td class="l"><span class="tag ${tierCls[r.tier]||''}">${r.tier}</span></td>`
+      +`<td>${r.n}</td><td>${wr}</td><td>${av}</td></tr>`;
+  }
+  h+='</tbody></table>';
+  box.innerHTML=h;
+}
+
+/* ---- 单股K线图（点表格里的「查看K线」打开，标注D0/买入/卖出点） ---- */
+function findStock(code, market){
+  const ds=state.datasets[market];
+  return (ds&&ds.stocks)?ds.stocks.find(s=>s.code===code):null;
+}
+function openChart(code, market, markers){
+  const stock=findStock(code, market);
+  if(!stock || !stock.kline || !stock.kline.length){ alert('未找到该股票的行情数据'); return; }
+  const k=stock.kline;
+  const d0i=dateIndex(k, markers.d0Date);
+  const buyi=dateIndex(k, markers.buyDate);
+  const selli=dateIndex(k, markers.sellDate);
+  const anchor=(d0i>=0?d0i:(buyi>=0?buyi:k.length-1));
+  let winStart=Math.max(0, anchor-60);
+  let winEndCandidate=(selli>=0?selli:(buyi>=0?buyi:anchor));
+  let winEnd=Math.min(k.length-1, winEndCandidate+15);
+  if(winEnd-winStart<40) winEnd=Math.min(k.length-1, winStart+40);
+  state.chart={ stock, market,
+    markers:{ d0Date:markers.d0Date||null, buyDate:markers.buyDate||null, sellDate:markers.sellDate||null,
+      buyPrice:markers.buyPrice!=null?parseFloat(markers.buyPrice):null,
+      sellPrice:markers.sellPrice!=null?parseFloat(markers.sellPrice):null },
+    winStart, winEnd };
+  $('#chartTitle').textContent=`${market} · ${stock.code} ${stock.name||''}`;
+  renderChartLegend();
+  $('#chartModal').classList.add('open');
+  drawKline();
+}
+function closeChart(){ $('#chartModal').classList.remove('open'); state.chart=null; }
+function renderChartLegend(){
+  const c=state.chart, m=c.markers, chips=[];
+  chips.push(`<span><span class="dot" style="background:#8b9bb0"></span>显示区间 ${c.stock.kline[c.winStart][0]} ~ ${c.stock.kline[c.winEnd][0]}</span>`);
+  if(m.d0Date) chips.push(`<span><span class="dot" style="background:#f59e0b"></span>${c.market==='US'?'突破日':'D0涨停日'} ${m.d0Date}</span>`);
+  if(m.buyDate) chips.push(`<span><span class="dot" style="background:#22c55e"></span>买入 ${m.buyDate} @ ${fmt(m.buyPrice,2)}</span>`);
+  if(m.sellDate) chips.push(`<span><span class="dot" style="background:${m.sellPrice>=m.buyPrice?'#22c55e':'#ef4444'}"></span>卖出 ${m.sellDate} @ ${fmt(m.sellPrice,2)}</span>`);
+  $('#chartLegend').innerHTML=chips.join('');
+}
+function drawKline(){
+  const c=state.chart; if(!c) return;
+  const k=c.stock.kline.slice(c.winStart, c.winEnd+1);
+  const m=c.markers;
+  const cv=$('#klineCanvas');
+  const dpr=window.devicePixelRatio||1;
+  const w=cv.clientWidth||1000, h=440;
+  cv.width=w*dpr; cv.height=h*dpr;
+  const ctx=cv.getContext('2d'); ctx.setTransform(1,0,0,1,0,0); ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,w,h);
+
+  const padL=60,padR=16,padT=16,padB=38;
+  const volH=60, gapPV=12;
+  const priceH=h-padT-padB-volH-gapPV;
+  const innerW=w-padL-padR;
+  const n=k.length;
+
+  let pMin=Infinity,pMax=-Infinity,vMax=0;
+  for(const row of k){ if(row[3]<pMin)pMin=row[3]; if(row[2]>pMax)pMax=row[2]; if(row[5]>vMax)vMax=row[5]; }
+  if(m.buyPrice!=null){ pMin=Math.min(pMin,m.buyPrice); pMax=Math.max(pMax,m.buyPrice); }
+  if(m.sellPrice!=null){ pMin=Math.min(pMin,m.sellPrice); pMax=Math.max(pMax,m.sellPrice); }
+  const pad=(pMax-pMin)*0.08 || pMax*0.05 || 1; pMin-=pad; pMax+=pad;
+
+  const slot=innerW/Math.max(1,n);
+  const bodyW=Math.max(1.5, Math.min(11, slot*0.58));
+  const X=i=> padL + i*slot + slot/2;
+  const Yp=v=> padT + (1-(v-pMin)/(pMax-pMin))*priceH;
+  const volBase=padT+priceH+gapPV+volH;
+  const Yv=v=> volBase - (vMax?v/vMax:0)*volH;
+  const dec = pMax<2 ? 4 : pMax<20 ? 3 : 2;   // 低价股显示更多小数位
+
+  // 价格区网格 + Y轴
+  ctx.strokeStyle='#28323f'; ctx.fillStyle='#8b9bb0'; ctx.font='10px sans-serif'; ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){
+    const v=pMin+(pMax-pMin)*i/4, y=Yp(v);
+    ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(w-padR,y); ctx.stroke();
+    ctx.textAlign='right'; ctx.fillText(v.toFixed(dec), padL-6, y+3);
+  }
+  // 蜡烛（细节层，稍暗，让收盘线更突出）：影线与实体都保证至少 1px 可见
+  for(let i=0;i<n;i++){
+    const o=k[i][1],hi=k[i][2],lo=k[i][3],cl=k[i][4];
+    const up=cl>=o; const col=up?'#2f9e5e':'#c0463a';
+    const x=X(i);
+    ctx.strokeStyle=col; ctx.fillStyle=col; ctx.lineWidth=1;
+    let yh=Yp(hi), yl=Yp(lo); if(yl-yh<1) yl=yh+1;
+    ctx.beginPath(); ctx.moveTo(x,yh); ctx.lineTo(x,yl); ctx.stroke();
+    const yo=Yp(o), yc=Yp(cl), top=Math.min(yo,yc), bh=Math.max(1,Math.abs(yc-yo));
+    ctx.fillRect(x-bodyW/2, top, bodyW, bh);
+  }
+  // 收盘价连线（主视觉层）：即使低价/低波动股也能一眼读出走势
+  ctx.beginPath();
+  for(let i=0;i<n;i++){ const x=X(i), y=Yp(k[i][4]); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); }
+  ctx.strokeStyle='rgba(230,237,243,.9)'; ctx.lineWidth=1.4; ctx.lineJoin='round'; ctx.stroke();
+  // 成交量
+  for(let i=0;i<n;i++){
+    const up=k[i][4]>=k[i][1]; const x=X(i);
+    ctx.fillStyle=up?'rgba(47,158,94,.5)':'rgba(192,70,58,.5)';
+    const y=Yv(k[i][5]); ctx.fillRect(x-bodyW/2, y, bodyW, volBase-y);
+  }
+  ctx.strokeStyle='#28323f'; ctx.beginPath(); ctx.moveTo(padL,volBase); ctx.lineTo(w-padR,volBase); ctx.stroke();
+  ctx.fillStyle='#8b9bb0'; ctx.textAlign='left'; ctx.fillText('成交量', padL+2, padT+priceH+gapPV+11);
+
+  // X轴日期（首/中/末，两端对齐不出界）
+  ctx.fillStyle='#8b9bb0';
+  [0, Math.floor((n-1)/2), n-1].forEach((i,idx)=>{ if(i>=0&&i<n){ ctx.textAlign=idx===0?'left':idx===2?'right':'center'; ctx.fillText(k[i][0], X(i), h-8);} });
+
+  // 标注：D0 / 买入 / 卖出
+  function markLine(date, price, color, label, above){
+    const idx=dateIndex(c.stock.kline, date) - c.winStart;
+    if(idx<0 || idx>=n) return;
+    const x=X(idx);
+    ctx.strokeStyle=color; ctx.setLineDash([4,4]); ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(x,padT); ctx.lineTo(x,padT+priceH); ctx.stroke(); ctx.setLineDash([]);
+    if(price!=null){
+      const y=Yp(price);
+      ctx.fillStyle=color; ctx.beginPath(); ctx.arc(x,y,4,0,Math.PI*2); ctx.fill();
+    }
+    ctx.fillStyle=color; ctx.font='bold 10px sans-serif'; ctx.textAlign='center';
+    ctx.fillText(label, x, above?padT-4:padT+priceH+14);
+  }
+  if(m.d0Date){
+    const idx=dateIndex(c.stock.kline, m.d0Date);
+    const closeD0=(idx>=0)?c.stock.kline[idx][4]:null;
+    markLine(m.d0Date, closeD0, '#f59e0b', 'D0', true);
+  }
+  if(m.buyDate) markLine(m.buyDate, m.buyPrice, '#22c55e', '买', false);
+  if(m.sellDate) markLine(m.sellDate, m.sellPrice, m.sellPrice>=m.buyPrice?'#22c55e':'#ef4444', '卖', false);
+}
+
+/* ---- 事件绑定 ---- */
+document.querySelectorAll('#marketSeg button').forEach(b=>b.onclick=()=>switchMarket(b.dataset.m));
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');
+  $('#view-scan').classList.toggle('active', b.dataset.t==='scan');
+  $('#view-bt').classList.toggle('active', b.dataset.t==='bt');
+});
+$('#loadBtn').onclick=()=>$('#fileInput').click();
+$('#fileInput').onchange=e=>{ if(e.target.files[0]) handleFile(e.target.files[0]); e.target.value=''; };
+$('#applyBtn').onclick=()=>{
+  if(isLite()){ alert('轻量模式（手机/网页版）展示的是云端按默认参数预计算的结果。\n要调参数重算，请在电脑上运行本地版（启动工具.command，加载全量数据）。'); return; }
+  state.params=collectParams(); runScan(); if(state.btResult) runBacktest();
+};
+$('#resetBtn').onclick=()=>{ state.params={...DEFAULT_PARAMS}; renderParams(); runScan(); };
+$('#scanSearch').oninput=renderScan;
+$('#scanState').onchange=renderScan;
+$('#scanTier').onchange=renderScan;
+$('#scanPriceMin').oninput=renderScan;
+$('#scanPriceMax').oninput=renderScan;
+$('#scanClearBtn').onclick=()=>{
+  $('#scanSearch').value=''; $('#scanState').value=''; $('#scanTier').value='';
+  $('#scanPriceMin').value=''; $('#scanPriceMax').value='';
+  renderScan();
+};
+$('#runBtBtn').onclick=runBacktest;
+$('#btAllBtn').onclick=()=>{ $('#btStart').value=''; $('#btEnd').value=''; runBacktest(); };
+window.addEventListener('resize',()=>{
+  if(state.chart) drawKline();
+});
+document.addEventListener('click', e=>{
+  const a=e.target.closest('[data-chart]');
+  if(!a) return;
+  e.preventDefault();
+  openChart(a.dataset.code, a.dataset.market, {
+    d0Date:a.dataset.d0||null, buyDate:a.dataset.buy||null, sellDate:a.dataset.sell||null,
+    buyPrice:a.dataset.buyprice, sellPrice:a.dataset.sellprice,
+  });
+});
+$('#chartCloseBtn').onclick=closeChart;
+$('#chartModal').addEventListener('click', e=>{ if(e.target.id==='chartModal') closeChart(); });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape' && $('#chartModal').classList.contains('open')) closeChart(); });
+
+/* ---- 启动 ---- */
+// PWA：仅 https(Pages) 下注册 Service Worker，提供离线缓存；本地 http.server 不注册
+if('serviceWorker' in navigator && location.protocol==='https:'){
+  navigator.serviceWorker.register('./sw.js').catch(()=>{});
+}
+renderParams();
+renderBt();
+// 自动加载当前市场的真实数据（通过本地服务器/启动器打开时生效；file:// 双击打开会显示"未加载数据"提示）
+switchMarket(state.market);
+</script>
+</body>
+</html>

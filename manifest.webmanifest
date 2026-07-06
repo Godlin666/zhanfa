@@ -1,0 +1,12 @@
+{
+  "name": "低位首板战法选股",
+  "short_name": "战法选股",
+  "description": "低位首板回踩缩量战法 · 港股/美股选股扫描与信号体检",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0f1419",
+  "theme_color": "#0f1419",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

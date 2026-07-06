@@ -1,0 +1,103 @@
+# 云端自动更新流水线：
+#   每个交易日收盘后在 GitHub 服务器上跑增量更新（美国机房直连 Yahoo，无需代理），
+#   用 prescan.js 预计算轻量结果，发布到 GitHub Pages —— 手机打开网址即最新。
+# 全量数据(gzip)存在 data 分支，每次单 commit 强推覆盖，仓库体积不会随时间膨胀。
+name: update-data
+
+on:
+  schedule:
+    - cron: '45 8 * * 1-5'   # 港股收盘后：香港时间 16:45（UTC 08:45），只更新 HK
+    - cron: '0 22 * * 2-6'   # 美股收盘后：UTC 22:00 = 北京时间次日 06:00，只更新 US
+  workflow_dispatch:
+    inputs:
+      markets:
+        description: '要更新的市场，逗号分隔（HK,US）'
+        default: 'HK,US'
+        required: false
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: update-data
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 取回上次的全量数据（data 分支，gzip 存放）
+        run: |
+          set -e
+          git fetch origin data:refs/remotes/origin/data || echo "还没有 data 分支（本次将全量拉取，耗时较长属正常）"
+          if git rev-parse -q --verify origin/data >/dev/null; then
+            git checkout origin/data -- '*.json.gz' || true
+            for f in *.json.gz; do [ -e "$f" ] && gunzip -kf "$f"; done
+          fi
+          ls -lh data_*.json 2>/dev/null || true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: 安装 Python 依赖
+        run: pip install --quiet yfinance openpyxl
+
+      - name: 确定更新市场
+        id: mk
+        env:
+          INPUT_MARKETS: ${{ github.event.inputs.markets }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "markets=${INPUT_MARKETS:-HK,US}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event.schedule }}" = "45 8 * * 1-5" ]; then
+            echo "markets=HK" >> "$GITHUB_OUTPUT"
+          else
+            echo "markets=US" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 更新行情（已有数据→增量补最新，没有→全量拉取）
+        run: |
+          set -e
+          IFS=',' read -ra MS <<< "${{ steps.mk.outputs.markets }}"
+          for m in "${MS[@]}"; do
+            if [ -f "data_${m}.json" ]; then
+              python -u fetch_hkus_yf.py --markets "$m" --incremental --batch 120
+            else
+              python -u fetch_hkus_yf.py --markets "$m" --batch 120
+            fi
+          done
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: 预计算轻量数据（site/）
+        run: node prescan.js HK,US
+
+      - name: 快照全量数据到 data 分支（单 commit 强推覆盖，防仓库膨胀）
+        run: |
+          set -e
+          mkdir -p /tmp/snap
+          for f in data_*.json; do gzip -9 -c "$f" > "/tmp/snap/$f.gz"; done
+          cd /tmp/snap
+          git init -q -b data
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -qm "data snapshot $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" data
+
+      - name: 上传 Pages 产物
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - name: 发布到 GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
