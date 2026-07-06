@@ -113,6 +113,7 @@
   .chartLegend .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:middle;}
   /* ---- 移动端组件（默认隐藏，窄屏由 JS/媒体查询启用） ---- */
   #bottomNav{display:none;}
+  #scanSort{display:none;}   /* 排序选择器只给手机用；桌面点表头排序 */
   .msummary{display:none;background:linear-gradient(180deg,#1e2836,#1a212b);border:1px solid var(--line);
     border-radius:16px;padding:13px 15px;margin-bottom:10px;}
   .msummary .mdate{color:var(--muted);font-size:11px;margin-bottom:9px;}
@@ -172,8 +173,11 @@
     main{padding:11px 12px 0;}
     .tabs{display:none;}                        /* 顶部tab → 底部导航 */
     details.params{display:none;}               /* 轻量模式不可调参，参数面板收进电脑版 */
-    #scanState,#scanTier,#scanPriceMin,#scanPriceMax,#scanClearBtn,#scanMeta{display:none;} /* 筛选→概要卡+chips */
+    #scanState,#scanTier,#scanMeta{display:none;} /* 状态/参考价值筛选→概要卡+chips；价格筛选和清空按钮保留 */
     #scanSearch{min-width:0 !important;flex:1 1 auto;border-radius:20px;padding:9px 15px;}
+    #scanSort{display:block;flex:1 1 46%;min-width:0;border-radius:20px;}
+    #scanPriceMin,#scanPriceMax{width:0;flex:1 1 22%;min-width:70px;border-radius:20px;}
+    #scanClearBtn{border-radius:20px;}
     .toolrow{gap:8px;margin-bottom:9px;}
     #view-bt .toolrow{display:none;}            /* 体检在轻量模式自动展示,区间按钮无意义 */
     .btnote{font-size:11px;line-height:1.6;padding:9px 12px;}
@@ -230,6 +234,14 @@
     <div id="presetDesc" style="display:none"></div>
     <div class="toolrow">
       <input type="text" id="scanSearch" placeholder="搜索 代码/名称…" style="min-width:200px">
+      <select id="scanSort" title="卡片排序（手机版）">
+        <option value="default">排序：综合（可买入优先·最新）</option>
+        <option value="volAsc">缩量比最小（质量优先）</option>
+        <option value="dateDesc">信号最新</option>
+        <option value="tier">参考价值最高</option>
+        <option value="priceAsc">价格 低→高</option>
+        <option value="priceDesc">价格 高→低</option>
+      </select>
       <select id="scanState" title="按信号状态筛选">
         <option value="">全部信号</option>
         <option value="可买入">只看可买入</option>
@@ -916,6 +928,8 @@ function runScan(){
 function renderScan(){
   // 参考价值筛选只对美股有意义，其它市场隐藏该下拉
   $('#scanTier').style.display = state.market==='US' ? '' : 'none';
+  const tierOpt=$('#scanSort option[value="tier"]');
+  if(tierOpt){ tierOpt.hidden = state.market!=='US'; if(tierOpt.hidden && $('#scanSort').value==='tier') $('#scanSort').value='default'; }
   renderScanSummary(); renderScanChips();
   const q=$('#scanSearch').value.trim().toLowerCase();
   const fState=$('#scanState').value, fTier=$('#scanTier').value;
@@ -931,7 +945,7 @@ function renderScan(){
   rows.sort((a,b)=>{ let x=a[sk],y=b[sk]; if(x==null)x=Infinity; if(y==null)y=Infinity;
     if(typeof x==='string') return dir*(x<y?-1:x>y?1:0); return dir*(x-y); });
   // 筛选条件/市场/档位一变就把分页复位到第一批（"加载更多"本身不触发复位）
-  const sig=[state.market,state.preset,q,fState,fTier,pMin,pMax].join('|');
+  const sig=[state.market,state.preset,q,fState,fTier,pMin,pMax,$('#scanSort').value].join('|');
   if(state._filterSig!==sig){ state._filterSig=sig; state.cardLimit=30; }
   const filtered = rows.length!==state.scanRows.length;
   $('#scanMeta').textContent=(filtered?`筛选后 ${rows.length} / 命中 ${state.scanRows.length} 只`:`命中 ${rows.length} 只`)
@@ -1094,8 +1108,16 @@ function renderPresetDesc(show){
 }
 function renderScanCards(rows, wrap){
   const tierCls={'较高':'buy','中等偏高':'buy','中等':'obs','较低':'timeout'};
-  const sorted=rows.slice().sort((a,b)=>(a.state===b.state?0:a.state==='可买入'?-1:1)
-    ||(a.d0Date<b.d0Date?1:a.d0Date>b.d0Date?-1:0));
+  const cmpDefault=(a,b)=>(a.state===b.state?0:a.state==='可买入'?-1:1)
+    ||(a.d0Date<b.d0Date?1:a.d0Date>b.d0Date?-1:0);
+  const ms=$('#scanSort').value;
+  const sorted=rows.slice();
+  if(ms==='volAsc') sorted.sort((a,b)=>((a.volRatio!=null?a.volRatio:9e9)-(b.volRatio!=null?b.volRatio:9e9))||cmpDefault(a,b));
+  else if(ms==='dateDesc') sorted.sort((a,b)=>(a.d0Date<b.d0Date?1:a.d0Date>b.d0Date?-1:0));
+  else if(ms==='priceAsc') sorted.sort((a,b)=>a.curPrice-b.curPrice);
+  else if(ms==='priceDesc') sorted.sort((a,b)=>b.curPrice-a.curPrice);
+  else if(ms==='tier'){ const o={'较高':0,'中等偏高':1,'中等':2,'较低':3}; sorted.sort((a,b)=>((o[a.tier]!=null?o[a.tier]:9)-(o[b.tier]!=null?o[b.tier]:9))||cmpDefault(a,b)); }
+  else sorted.sort(cmpDefault);
   const shown=sorted.slice(0, state.cardLimit||30);   // 分页：先出一批，点"加载更多"再续
   let h='';
   for(const r of shown){
@@ -1446,9 +1468,10 @@ $('#scanState').onchange=renderScan;
 $('#scanTier').onchange=renderScan;
 $('#scanPriceMin').oninput=renderScan;
 $('#scanPriceMax').oninput=renderScan;
+$('#scanSort').onchange=renderScan;
 $('#scanClearBtn').onclick=()=>{
   $('#scanSearch').value=''; $('#scanState').value=''; $('#scanTier').value='';
-  $('#scanPriceMin').value=''; $('#scanPriceMax').value='';
+  $('#scanPriceMin').value=''; $('#scanPriceMax').value=''; $('#scanSort').value='default';
   renderScan();
 };
 $('#runBtBtn').onclick=runBacktest;
