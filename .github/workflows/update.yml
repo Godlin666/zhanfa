@@ -8,6 +8,8 @@ on:
   schedule:
     - cron: '45 8 * * 1-5'   # 港股收盘后：香港时间 16:45（UTC 08:45），只更新 HK
     - cron: '0 22 * * 2-6'   # 美股收盘后：UTC 22:00 = 北京时间次日 06:00，只更新 US
+  push:
+    branches: [main]          # 改代码推送 → 快速通道：跳过数据下载，用现有数据重算+发布(约2分钟)
   workflow_dispatch:
     inputs:
       markets:
@@ -55,7 +57,9 @@ jobs:
         env:
           INPUT_MARKETS: ${{ github.event.inputs.markets }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "markets=" >> "$GITHUB_OUTPUT"     # 快速通道：不更新数据
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "markets=${INPUT_MARKETS:-HK,US}" >> "$GITHUB_OUTPUT"
           elif [ "${{ github.event.schedule }}" = "45 8 * * 1-5" ]; then
             echo "markets=HK" >> "$GITHUB_OUTPUT"
@@ -63,7 +67,8 @@ jobs:
             echo "markets=US" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: 更新行情（已有数据→增量补最新，没有→全量拉取）
+      - name: 更新行情（已有数据→增量补最新，没有→全量拉取；推送触发时跳过）
+        if: steps.mk.outputs.markets != ''
         run: |
           set -e
           IFS=',' read -ra MS <<< "${{ steps.mk.outputs.markets }}"
@@ -81,7 +86,8 @@ jobs:
       - name: 预计算轻量数据（site/）
         run: node prescan.js HK,US
 
-      - name: 快照全量数据到 data 分支（单 commit 强推覆盖，防仓库膨胀）
+      - name: 快照全量数据到 data 分支（单 commit 强推覆盖，防仓库膨胀；推送触发时数据没变,跳过）
+        if: steps.mk.outputs.markets != ''
         run: |
           set -e
           mkdir -p /tmp/snap
