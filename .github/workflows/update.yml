@@ -126,3 +126,7 @@ jobs:
       - name: 发布到 GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        continue-on-error: true   # Pages 服务偶发"Deployment failed, try again later"，失败不终止，交给下面重试
+      - name: 发布重试（Pages 偶发抽风时自动补一刀）
+        if: steps.deployment.outcome == 'failure'
+        uses: actions/deploy-pages@v4
