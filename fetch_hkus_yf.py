@@ -370,12 +370,11 @@ def fetch_market_index(market, period, incremental, existing_index):
     ticker = MARKET_INDEX_TICKER.get(market)
     if not ticker:
         return None
-    today = datetime.date.today().isoformat()
     if incremental and existing_index and existing_index.get("kline"):
         last_date = existing_index["kline"][-1][0]
-        if last_date >= today:
-            return existing_index
-        incr_start = (datetime.date.fromisoformat(last_date) + datetime.timedelta(days=1)).isoformat()
+        # 从本地最后一天(而非次日)开始重抓：若上次是盘中跑的，最后一根是半天的
+        # 不完整K线，重抓后被 merge_kline 的"新覆盖旧"替换成收盘完整K线
+        incr_start = last_date
         kmap = download_batch([ticker], 1, start=incr_start)
         new_rows = kmap.get(ticker)
         kline = merge_kline(existing_index["kline"], new_rows) if new_rows else existing_index["kline"]
@@ -479,7 +478,9 @@ def fetch_market(market, period="2y", limit=None, batch=40, incremental=False):
                                 "secid": ticker, "kline": kline})
                 ok += 1; fresh += 1
     else:
-        # 增量模式：按"本地最新日期"分组，同一天的一起批量请求 start=次日
+        # 增量模式：按"本地最新日期"分组批量请求。注意 start=本地最后一天(而非次日)：
+        # 上次若在盘中跑过，最后一根是半天的不完整K线，重抓这一天让 merge_kline 用
+        # 收盘完整K线覆盖它；已收录完整的日子重抓一根也只是被同值覆盖，无副作用
         full_items, groups = [], {}
         carry = []
         for code, ticker, name in items:
@@ -488,12 +489,10 @@ def fetch_market(market, period="2y", limit=None, batch=40, incremental=False):
                 full_items.append((code, ticker, name))
                 continue
             last_date = old["kline"][-1][0]
-            if last_date >= today:
+            if last_date > today:   # 只有异常的"未来日期"才直接沿用（正常到不了这个分支）
                 carry.append((code, ticker, name, old))
                 continue
-            incr_start = (datetime.date.fromisoformat(last_date)
-                          + datetime.timedelta(days=1)).isoformat()
-            groups.setdefault(incr_start, []).append((code, ticker, name, old))
+            groups.setdefault(last_date, []).append((code, ticker, name, old))
 
         # 已最新，直接沿用本地数据
         for code, ticker, name, old in carry:
