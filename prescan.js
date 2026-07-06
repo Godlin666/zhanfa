@@ -32,7 +32,7 @@ function loadEngine() {
   cut = m[1].lastIndexOf('/*', cut);   // 回退到该注释块的 /* 开头，别把半个注释留在引擎源码里
   // const/function 声明不会自动挂到 vm 的 globalThis 上，末尾补一个显式导出
   const src = m[1].slice(0, cut)
-    + '\n;globalThis.__ENGINE__ = { DEFAULT_PARAMS, scanMarket, backtest, computeStats, computeTierStats, computeCalStats };';
+    + '\n;globalThis.__ENGINE__ = { DEFAULT_PARAMS, PARAM_PRESETS, PRESET_ORDER, scanMarket, backtest, computeStats, computeTierStats, computeCalStats };';
   const ctx = vm.createContext({ console });
   vm.runInContext(src, ctx, { filename: 'engine-from-index.html' });
   return ctx.__ENGINE__;
@@ -50,23 +50,36 @@ function main() {
     const stocks = data.stocks || [];
     stocks.forEach(s => { s.market = mkt; });
     const indexKline = (data.index && data.index.kline) ? data.index.kline : null;
-    const params = { ...E.DEFAULT_PARAMS };
 
-    const scan = E.scanMarket(stocks, params, indexKline);
-    // 可买入排前面，同状态按 D0 新的在前
-    scan.sort((a, b) => (a.state === b.state ? 0 : a.state === '可买入' ? -1 : 1)
-      || (a.d0Date < b.d0Date ? 1 : a.d0Date > b.d0Date ? -1 : 0));
-
-    const bt = E.backtest(stocks, params, null, indexKline);
-
-    // 命中股票的K线窗口，手机端点「查看K线」用
+    // 三档参数(严格/标准/宽松)各跑一遍扫描 + 全历史体检
     const byCode = new Map(stocks.map(s => [s.code, s]));
-    const charts = {};
-    for (const r of scan) {
-      const s = byCode.get(r.code);
-      if (!s || !s.kline) continue;
-      const from = Math.max(0, (r.d0Idx != null ? r.d0Idx : s.kline.length - 1) - CHART_LOOKBACK);
-      charts[r.code] = { name: s.name, board: s.board, kline: s.kline.slice(from) };
+    const charts = {};   // 三档命中股票K线窗口的并集
+    const presets = {};
+    const presetDefs = E.PARAM_PRESETS[mkt] || { '标准': {} };
+    for (const pname of E.PRESET_ORDER) {
+      if (!(pname in presetDefs)) continue;
+      const params = { ...E.DEFAULT_PARAMS, ...presetDefs[pname] };
+      const scan = E.scanMarket(stocks, params, indexKline);
+      scan.sort((a, b) => (a.state === b.state ? 0 : a.state === '可买入' ? -1 : 1)
+        || (a.d0Date < b.d0Date ? 1 : a.d0Date > b.d0Date ? -1 : 0));
+      const bt = E.backtest(stocks, params, null, indexKline);
+      presets[pname] = {
+        scan,
+        stats: bt.stats,
+        tierStats: mkt === 'US' ? E.computeTierStats(bt.trades) : null,
+        calStats: mkt === 'US' ? E.computeCalStats(bt.trades) : null,
+        trades_recent: bt.trades.slice(-RECENT_TRADES),
+        trades_total: bt.trades.length,
+      };
+      for (const r of scan) {
+        const s = byCode.get(r.code);
+        if (!s || !s.kline || charts[r.code]) continue;
+        const from = Math.max(0, (r.d0Idx != null ? r.d0Idx : s.kline.length - 1) - CHART_LOOKBACK);
+        charts[r.code] = { name: s.name, board: s.board, kline: s.kline.slice(from) };
+      }
+      console.log(mkt + ' [' + pname + ']: 命中 ' + scan.length
+        + ' (可买入 ' + scan.filter(r => r.state === '可买入').length + ') · 体检 '
+        + bt.stats.count + ' 笔 胜率 ' + bt.stats.winRate.toFixed(1) + '%');
     }
 
     let minD = '9999', maxD = '0';
@@ -75,24 +88,21 @@ function main() {
       if (k && k.length) { if (k[0][0] < minD) minD = k[0][0]; if (k[k.length - 1][0] > maxD) maxD = k[k.length - 1][0]; }
     }
 
+    const std = presets['标准'];
     const lite = {
       market: mkt, mode: 'lite',
       generated_at: new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC',
       stock_count: stocks.length,
       data_range: [minD, maxD],
-      params,
-      scan,
+      presets,
       charts,
-      stats: bt.stats,
-      tierStats: mkt === 'US' ? E.computeTierStats(bt.trades) : null,
-      calStats: mkt === 'US' ? E.computeCalStats(bt.trades) : null,
-      trades_recent: bt.trades.slice(-RECENT_TRADES),
-      trades_total: bt.trades.length,
+      // 顶层保留标准档字段：兼容手机上还缓存着旧版页面的情况
+      scan: std.scan, stats: std.stats, tierStats: std.tierStats, calStats: std.calStats,
+      trades_recent: std.trades_recent, trades_total: std.trades_total,
     };
     const outPath = path.join(OUT_DIR, 'lite_' + mkt + '.json');
     fs.writeFileSync(outPath, JSON.stringify(lite));
-    console.log(mkt + ': 扫描命中 ' + scan.length + ' · 体检信号 ' + bt.stats.count
-      + ' · K线窗口 ' + Object.keys(charts).length + ' 只 · '
+    console.log(mkt + ': K线窗口 ' + Object.keys(charts).length + ' 只 · '
       + (fs.statSync(outPath).size / 1024).toFixed(0) + ' KB -> ' + outPath);
   }
 

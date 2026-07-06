@@ -86,6 +86,12 @@ jobs:
       - name: 预计算轻量数据（site/）
         run: node prescan.js HK,US
 
+      - name: 推送每日信号到手机（Bark，未配置 BARK_KEY 时自动跳过）
+        if: github.event_name == 'schedule'
+        env:
+          BARK_KEY: ${{ secrets.BARK_KEY }}
+        run: node notify_bark.js "${{ steps.mk.outputs.markets }}"
+
       - name: 快照全量数据到 data 分支（单 commit 强推覆盖，防仓库膨胀；推送触发时数据没变,跳过）
         if: steps.mk.outputs.markets != ''
         run: |
@@ -99,6 +105,19 @@ jobs:
           git add .
           git commit -qm "data snapshot $(date -u '+%Y-%m-%d %H:%M UTC')"
           git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" data
+
+      - name: 周五数据快照存档（Release，保留最近4份——data 分支是单commit覆盖,没有历史,这是回滚保险）
+        if: github.event_name == 'schedule' && steps.mk.outputs.markets != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          if [ "$(date -u +%u)" != "5" ]; then echo "非周五，跳过存档"; exit 0; fi
+          tag="snap-$(date -u +%Y%m%d)"
+          gh release create "$tag" /tmp/snap/*.gz --notes "每周数据快照 $(date -u +%F)" 2>/dev/null || echo "本周快照已存在，跳过"
+          gh release list --limit 100 --json tagName -q '.[].tagName' | grep '^snap-' | sort -r | tail -n +5 | while read -r t; do
+            echo "清理旧快照 $t"; gh release delete "$t" --yes --cleanup-tag || true
+          done
 
       - name: 上传 Pages 产物
         uses: actions/upload-pages-artifact@v3

@@ -362,7 +362,7 @@ def load_existing_index(market):
 
 
 # 大盘代理指数：目前只有美股引擎(平台/杯柄突破策略)的"大盘没有走弱"条件用得到
-MARKET_INDEX_TICKER = {"US": "SPY"}
+MARKET_INDEX_TICKER = {"US": "SPY", "HK": "^HSI"}   # 大盘过滤用：美股SPY，港股恒生指数
 
 
 def fetch_market_index(market, period, incremental, existing_index):
