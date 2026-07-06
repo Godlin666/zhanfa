@@ -134,6 +134,21 @@
   #presetDesc{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--amber);
     border-radius:10px;padding:9px 12px;margin-bottom:10px;color:var(--muted);font-size:11.5px;line-height:1.65;}
   #presetDesc b{color:var(--txt);}
+  /* 名词解释：任何带 data-g 的词都能点，弹出白话解释 */
+  [data-g]{cursor:pointer;}
+  .kv[data-g]{border-bottom:1px dashed #43536b;padding-bottom:1px;}
+  #gloss{position:fixed;left:12px;right:12px;bottom:calc(74px + env(safe-area-inset-bottom));z-index:80;
+    background:#232f3f;border:1px solid #3b4c63;border-radius:14px;padding:12px 15px;
+    font-size:12.5px;line-height:1.7;color:var(--txt);box-shadow:0 8px 30px rgba(0,0,0,.5);
+    display:none;max-width:560px;margin:0 auto;}
+  #gloss.open{display:block;}
+  #gloss b{color:var(--accent);display:block;margin-bottom:3px;}
+  #gloss .close-hint{color:var(--muted);font-size:10.5px;margin-top:6px;}
+  .loadmore{display:block;width:100%;margin:4px 0 14px;padding:11px;text-align:center;}
+  #topBtn{display:none;position:fixed;right:14px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:55;
+    width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:rgba(34,44,57,.95);
+    color:var(--txt);font-size:17px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.4);}
+  #topBtn.show{display:block;}
   .tag.new{background:rgba(59,130,246,.2);color:var(--accent);font-weight:600;margin-left:6px;}
   .scard{background:var(--panel);border:1px solid var(--line);border-radius:14px;
     padding:12px 14px;margin-bottom:9px;cursor:pointer;}
@@ -254,6 +269,9 @@
     <div class="tablewrap" id="btWrap"></div>
   </section>
 </main>
+
+<div id="gloss"></div>
+<button id="topBtn" title="回到顶部">↑</button>
 
 <nav id="bottomNav">
   <button data-t="scan" class="active"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>选股</button>
@@ -823,7 +841,7 @@ async function tryAutoLoad(market, force){
     if(!resp.ok) throw new Error('HTTP '+resp.status);
     const lite=await resp.json();
     // 轻量包只带命中股票的K线窗口，拼成 stocks 供「查看K线」用；扫描/体检结果直接用云端算好的
-    const stocks=Object.entries(lite.charts||{}).map(([code,c])=>({code, name:c.name, board:c.board, market, kline:c.kline}));
+    const stocks=Object.entries(lite.charts||{}).map(([code,c])=>({code, name:c.name, board:c.board, market, kline:c.kline, sector:c.sector, industry:c.industry}));
     state.datasets[market]={market, stocks, lite};
     // "新"标记：与上次打开对比(取三档信号的并集,换档不影响判定)
     const keySet=new Set();
@@ -912,6 +930,9 @@ function renderScan(){
   const sk=state.scanSort.key, dir=state.scanSort.dir;
   rows.sort((a,b)=>{ let x=a[sk],y=b[sk]; if(x==null)x=Infinity; if(y==null)y=Infinity;
     if(typeof x==='string') return dir*(x<y?-1:x>y?1:0); return dir*(x-y); });
+  // 筛选条件/市场/档位一变就把分页复位到第一批（"加载更多"本身不触发复位）
+  const sig=[state.market,state.preset,q,fState,fTier,pMin,pMax].join('|');
+  if(state._filterSig!==sig){ state._filterSig=sig; state.cardLimit=30; }
   const filtered = rows.length!==state.scanRows.length;
   $('#scanMeta').textContent=(filtered?`筛选后 ${rows.length} / 命中 ${state.scanRows.length} 只`:`命中 ${rows.length} 只`)
     +`（可买入 ${rows.filter(r=>r.state==='可买入').length} · 观察中 ${rows.filter(r=>r.state==='观察中').length}）`;
@@ -943,7 +964,7 @@ function renderScan(){
         +`<td>${fmt(r.changePct,1)}</td><td>${fmt(r.breakoutLevel,2)}</td><td>${fmt(r.baseAmp,1)}</td>`
         +`<td>${r.volRatio!=null?fmt(r.volRatio,2):'-'}</td><td>${fmt(r.curPrice,2)}</td>`
         +`<td class="l"><span class="tag ${tierCls[r.tier]||''}">${r.tier}</span></td>`
-        +`<td class="l">${r.calFlag?`<span class="tag timeout" title="突破日落在期末机械放量窗口，放量可信度打折，参考价值已降一档">${r.calFlag}</span>`:'-'}</td>`
+        +`<td class="l">${r.calFlag?`<span class="tag timeout" data-g="${PLAIN_CAL[r.calFlag]||r.calFlag}">${PLAIN_CAL[r.calFlag]||r.calFlag}</span>`:'-'}</td>`
         +`<td class="l">${isNewSignal(r)?'<span class="tag new">新</span> ':''}<span class="tag ${tag}">${r.state}</span>${(r.state==='可买入'&&r.buyElapsed>=1)?` <span class="hint">已过${r.buyElapsed}天</span>`:''}</td>`
         +`<td class="l"><a class="link" data-chart data-code="${r.code}" data-market="${r.market}" data-d0="${r.d0Date||''}">查看K线</a></td></tr>`;
     } else {
@@ -960,6 +981,44 @@ function renderScan(){
     renderScan();
   });
 }
+
+/* ---- 名词解释（点任何带下划线的词/标签弹出，给不懂行情术语的人看） ---- */
+// 期末机械放量标签的白话显示名（数据里仍是原名，只在展示时转换）
+const PLAIN_CAL={'罗素重构':'指数换股日','四巫日':'期权到期日','季末调仓':'季末调仓','季初调仓':'季初调仓'};
+const GLOSSARY={
+  '可买入':'这只票走完了「启动→观察→缩量回踩」整套流程，符合战法的买入条件。注意旁边的买点时效——买点过去太久就别追了。',
+  '观察中':'刚出现启动信号，还在 2~5 天的观察期里（还没确认缩量回踩）。先看着，别急着买。',
+  'D0':'启动日：这只票第一次放量大涨的那天。战法从这天开始计时观察。',
+  '突破':'突破日：放量冲过长期整理平台最高点的那天。',
+  '突破位':'整理平台的最高价。回踩跌破它=突破失败、信号作废；止损也设在它下方一点。',
+  '缩量比':'回踩时的成交量 ÷ 启动那天的成交量。越小越好——说明想卖的人少，筹码稳。',
+  '低位':'现价处在过去一年价格区间的百分位。数字越小越接近一年最低点。「低位」是这套战法的前提。',
+  '涨幅':'启动日(D0)当天的涨幅。',
+  '参考价值':'信号可信度分层：成交额大的龙头/大盘股放量突破可信度高，标「较高」；冷门小票标「较低」。依据＝日均成交额规模＋相对大盘的强弱。',
+  '指数换股日':'罗素指数每年6月底更换成分股，当天的暴量是基金被动买卖造成的，跟公司好坏无关——所以这天出的"放量突破"可信度打折，参考价值已自动降一档。',
+  '期权到期日':'每季度第三个周五，大量期权/期货同一天到期结算（俗称"四巫日"），成交量虚高——这天的放量不算数，参考价值已自动降一档。',
+  '季末调仓':'季度末大机构要把仓位调回目标比例，买卖量放大。这几天的放量多是调仓造成的，参考价值已自动降一档。',
+  '季初调仓':'新季度头两天机构资金进场布局，放量可信度打折，参考价值已自动降一档。',
+  '买点已过':'战法的买点是「观察期结束后第二天的开盘价」。这个买点已经过去几天了，现价可能已涨了一截——追进去等于放弃了战法的成本优势，风险大。',
+  '新':'和你上次打开这个页面相比，新冒出来的信号。',
+  '行业':'公司所属行业（来自雅虎财经）。',
+  '整理振幅':'突破前那段时间股价上下波动的幅度。越小说明整理越充分、突破越有力。',
+  '横盘振幅':'启动前那段时间股价上下波动的幅度。越小说明横盘越扎实。',
+};
+function showGloss(term){
+  const txt=GLOSSARY[term];
+  if(!txt) return;
+  const g=$('#gloss');
+  g.innerHTML=`<b>${esc(term)}</b>${esc(txt)}<div class="close-hint">点任意处关闭</div>`;
+  g.classList.add('open');
+}
+// 用捕获阶段拦截，避免点术语时把整张卡片的"查看K线"也触发了
+document.addEventListener('click', e=>{
+  const g=e.target.closest('[data-g]');
+  const glossEl=$('#gloss');
+  if(g){ e.preventDefault(); e.stopPropagation(); showGloss(g.dataset.g); return; }
+  if(glossEl.classList.contains('open')) glossEl.classList.remove('open');
+}, true);
 
 /* ---- 移动端渲染：概要卡 + chips + 卡片流（桌面不渲染这些） ---- */
 function renderScanSummary(){
@@ -1037,40 +1096,48 @@ function renderScanCards(rows, wrap){
   const tierCls={'较高':'buy','中等偏高':'buy','中等':'obs','较低':'timeout'};
   const sorted=rows.slice().sort((a,b)=>(a.state===b.state?0:a.state==='可买入'?-1:1)
     ||(a.d0Date<b.d0Date?1:a.d0Date>b.d0Date?-1:0));
+  const shown=sorted.slice(0, state.cardLimit||30);   // 分页：先出一批，点"加载更多"再续
   let h='';
-  for(const r of sorted){
+  for(const r of shown){
     const tag=r.state==='可买入'?'buy':'obs';
     const m=[];
+    if(r.sector) m.push(`<span class="kv" data-g="行业">${esc(r.sector)}</span>`);
     if(state.market==='US'){
-      m.push(`<span class="kv">突破 <b>${(r.d0Date||'').slice(5)}</b></span>`);
-      m.push(`<span class="kv">突破位 <b>${fmt(r.breakoutLevel,2)}</b></span>`);
-      if(r.volRatio!=null) m.push(`<span class="kv">缩量比 <b>${fmt(r.volRatio,2)}</b></span>`);
-      m.push(`<span class="tag ${tierCls[r.tier]||''}">${r.tier}</span>`);
-      if(r.calFlag) m.push(`<span class="tag timeout">${r.calFlag}</span>`);
+      m.push(`<span class="kv" data-g="突破">突破 <b>${(r.d0Date||'').slice(5)}</b></span>`);
+      m.push(`<span class="kv" data-g="突破位">突破位 <b>${fmt(r.breakoutLevel,2)}</b></span>`);
+      if(r.volRatio!=null) m.push(`<span class="kv" data-g="缩量比">缩量比 <b>${fmt(r.volRatio,2)}</b></span>`);
+      m.push(`<span class="tag ${tierCls[r.tier]||''}" data-g="参考价值">${r.tier}</span>`);
+      if(r.calFlag){ const cf=PLAIN_CAL[r.calFlag]||r.calFlag; m.push(`<span class="tag timeout" data-g="${cf}">${cf}</span>`); }
     } else {
-      m.push(`<span class="kv">D0 <b>${(r.d0Date||'').slice(5)}</b></span>`);
-      m.push(`<span class="kv">涨幅 <b>${fmt(r.changePct,1)}%</b></span>`);
-      m.push(`<span class="kv">低位 <b>${fmt(r.lowPctValue,0)}%</b></span>`);
-      if(r.volRatio!=null) m.push(`<span class="kv">缩量比 <b>${fmt(r.volRatio,2)}</b></span>`);
+      m.push(`<span class="kv" data-g="D0">D0 <b>${(r.d0Date||'').slice(5)}</b></span>`);
+      m.push(`<span class="kv" data-g="涨幅">涨幅 <b>${fmt(r.changePct,1)}%</b></span>`);
+      m.push(`<span class="kv" data-g="低位">低位 <b>${fmt(r.lowPctValue,0)}%</b></span>`);
+      if(r.volRatio!=null) m.push(`<span class="kv" data-g="缩量比">缩量比 <b>${fmt(r.volRatio,2)}</b></span>`);
     }
     // 买点时效：可买入 ≠ 现在追进去。买点是"观察期结束的次日开盘"，过去越久越要谨慎
     if(r.state==='可买入'){
-      if(r.buyElapsed==null) m.push('<span class="kv">买点 <b>下一开盘</b></span>');
-      else if(r.buyElapsed===0) m.push('<span class="kv">买点 <b>今日开盘</b></span>');
-      else m.push(`<span class="tag obs">买点已过${r.buyElapsed}天 慎追</span>`);
+      if(r.buyElapsed==null) m.push('<span class="kv" data-g="买点已过">买点 <b>下一开盘</b></span>');
+      else if(r.buyElapsed===0) m.push('<span class="kv" data-g="买点已过">买点 <b>今日开盘</b></span>');
+      else m.push(`<span class="tag obs" data-g="买点已过">买点已过${r.buyElapsed}天 慎追</span>`);
     }
     h+=`<div class="scard" data-chart data-code="${esc(r.code)}" data-market="${r.market}" data-d0="${r.d0Date||''}">`
-      +`<div class="scard-top"><div style="min-width:0"><span class="code">${esc(r.code)}</span>${isNewSignal(r)?'<span class="tag new">新</span>':''}<span class="name">${esc(r.name)}</span></div>`
-      +`<div style="text-align:right;flex:0 0 auto"><div class="price">${fmt(r.curPrice,2)}</div><span class="tag ${tag}">${r.state}</span></div></div>`
+      +`<div class="scard-top"><div style="min-width:0"><span class="code">${esc(r.code)}</span>${isNewSignal(r)?'<span class="tag new" data-g="新">新</span>':''}<span class="name">${esc(r.name)}</span></div>`
+      +`<div style="text-align:right;flex:0 0 auto"><div class="price">${fmt(r.curPrice,2)}</div><span class="tag ${tag}" data-g="${r.state}">${r.state}</span></div></div>`
       +`<div class="scard-mrow">${m.join('')}</div></div>`;
   }
+  if(sorted.length>shown.length)
+    h+=`<button class="ghost btn loadmore" id="loadMoreBtn">加载更多（已显示 ${shown.length} / ${sorted.length} 只）</button>`;
   wrap.innerHTML=h;
+  const lm=$('#loadMoreBtn');
+  if(lm) lm.onclick=()=>{ state.cardLimit=(state.cardLimit||30)+50; renderScan(); };
 }
 function renderBtCards(rows, wrap){
   const exitMap={profit:['profit','止盈'],stop:['stop','止损'],timeout:['timeout','超时']};
   const tierCls={'较高':'buy','中等偏高':'buy','中等':'obs','较低':'timeout'};
   let h='';
-  for(const t of rows.slice().reverse()){   // 最新的交易排前面
+  const rev=rows.slice().reverse();   // 最新的交易排前面
+  const shown=rev.slice(0, state.btCardLimit||30);
+  for(const t of shown){
     const [cl,tx]=exitMap[t.exit]||['',t.exit];
     h+=`<div class="scard" data-chart data-code="${esc(t.code)}" data-market="${t.market}" data-d0="${t.d0Date||''}"`
       +` data-buy="${t.buyDate||''}" data-buyprice="${t.buyPrice}" data-sell="${t.sellDate||''}" data-sellprice="${t.sellPrice}">`
@@ -1079,17 +1146,22 @@ function renderBtCards(rows, wrap){
       +`<div class="scard-mrow"><span class="kv">买 <b>${(t.buyDate||'').slice(5)} @ ${fmt(t.buyPrice,2)}</b></span>`
       +`<span class="kv">卖 <b>${(t.sellDate||'').slice(5)} @ ${fmt(t.sellPrice,2)}</b></span>`
       +`<span class="kv">持有 <b>${t.holdDays}天</b></span>`
-      +(t.tier?`<span class="tag ${tierCls[t.tier]||''}">${t.tier}</span>`:'')
-      +(t.calFlag?`<span class="tag timeout">${t.calFlag}</span>`:'')
+      +(t.tier?`<span class="tag ${tierCls[t.tier]||''}" data-g="参考价值">${t.tier}</span>`:'')
+      +(t.calFlag?`<span class="tag timeout" data-g="${PLAIN_CAL[t.calFlag]||t.calFlag}">${PLAIN_CAL[t.calFlag]||t.calFlag}</span>`:'')
       +`</div></div>`;
   }
+  if(rev.length>shown.length)
+    h+=`<button class="ghost btn loadmore" id="btLoadMoreBtn">加载更多（已显示 ${shown.length} / ${rev.length} 笔）</button>`;
   wrap.innerHTML=h;
+  const lm=$('#btLoadMoreBtn');
+  if(lm) lm.onclick=()=>{ state.btCardLimit=(state.btCardLimit||30)+50; renderBt(); };
 }
 
 /* ---- Tab2 信号体检 ---- */
 let btGen=0;   // 同 scanGen：作废切市场后仍在跑的旧体检任务
 function runBacktest(){
   const gen=++btGen;
+  state.btCardLimit=30;
   if(isLite()){   // 轻量模式：体检为云端预计算的全历史结果（区间选择在手机版不生效），随档位切换
     const L=state.datasets[state.market].lite;
     const P=(L.presets&&L.presets[state.preset])||L;
@@ -1168,8 +1240,8 @@ function renderBt(){
       +`<td class="l">${t.d0Date}</td><td class="l">${t.buyDate}</td><td>${fmt(t.buyPrice,2)}</td>`
       +`<td class="l">${t.sellDate}</td><td>${fmt(t.sellPrice,2)}</td><td>${t.holdDays}</td>`
       +`<td class="${t.ret>=0?'pos':'neg'}">${fmt(t.ret,2)}</td><td class="l"><span class="tag ${cl}">${tx}</span></td>`;
-    if(isUSbt) h+=`<td class="l"><span class="tag ${tierCls[t.tier]||''}">${t.tier||'-'}</span></td>`
-      +`<td class="l">${t.calFlag?`<span class="tag timeout">${t.calFlag}</span>`:'-'}</td>`;
+    if(isUSbt) h+=`<td class="l"><span class="tag ${tierCls[t.tier]||''}" data-g="参考价值">${t.tier||'-'}</span></td>`
+      +`<td class="l">${t.calFlag?`<span class="tag timeout" data-g="${PLAIN_CAL[t.calFlag]||t.calFlag}">${PLAIN_CAL[t.calFlag]||t.calFlag}</span>`:'-'}</td>`;
     h+=`<td class="l"><a class="link" data-chart data-code="${t.code}" data-market="${t.market}" data-d0="${t.d0Date||''}"`
       +` data-buy="${t.buyDate||''}" data-buyprice="${t.buyPrice}" data-sell="${t.sellDate||''}" data-sellprice="${t.sellPrice}">查看K线</a></td></tr>`;
   }
@@ -1256,6 +1328,8 @@ function openChart(code, market, markers){
 function closeChart(){ $('#chartModal').classList.remove('open'); state.chart=null; }
 function renderChartLegend(){
   const c=state.chart, m=c.markers, chips=[];
+  if(c.stock.sector||c.stock.industry)
+    chips.push(`<span><span class="dot" style="background:#3b82f6"></span>${esc(c.stock.sector||'')}${c.stock.industry?' · '+esc(c.stock.industry):''}</span>`);
   chips.push(`<span><span class="dot" style="background:#8b9bb0"></span>显示区间 ${c.stock.kline[c.winStart][0]} ~ ${c.stock.kline[c.winEnd][0]}</span>`);
   if(m.d0Date) chips.push(`<span><span class="dot" style="background:#f59e0b"></span>${c.market==='US'?'突破日':'D0涨停日'} ${m.d0Date}</span>`);
   if(m.buyDate) chips.push(`<span><span class="dot" style="background:#22c55e"></span>买入 ${m.buyDate} @ ${fmt(m.buyPrice,2)}</span>`);
@@ -1382,6 +1456,8 @@ $('#btAllBtn').onclick=()=>{ $('#btStart').value=''; $('#btEnd').value=''; runBa
 window.addEventListener('resize',()=>{
   if(state.chart) drawKline();
 });
+$('#topBtn').onclick=()=>window.scrollTo({top:0,behavior:'smooth'});
+window.addEventListener('scroll',()=>{ $('#topBtn').classList.toggle('show', window.scrollY>600); },{passive:true});
 document.addEventListener('click', e=>{
   const a=e.target.closest('[data-chart]');
   if(!a) return;

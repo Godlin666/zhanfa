@@ -1,6 +1,7 @@
 # 全量数据不进 main 分支（体积大；gzip 后的快照由 Actions 存到 data 分支）
 data_*.json
 *.json.gz
+info_cache.json
 # 预计算产物（Actions 每次现生成）
 site/
 __pycache__/
