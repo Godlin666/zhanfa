@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#0f1419">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
@@ -111,22 +111,64 @@
   .modal-head h3{margin:0;font-size:15px;}
   .chartLegend{display:flex;flex-wrap:wrap;gap:8px 16px;margin:6px 0 10px;font-size:12px;color:var(--muted);}
   .chartLegend .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:middle;}
-  /* ---- 手机窄屏适配 ---- */
+  /* ---- 移动端组件（默认隐藏，窄屏由 JS/媒体查询启用） ---- */
+  #bottomNav{display:none;}
+  .msummary{display:none;background:linear-gradient(180deg,#1e2836,#1a212b);border:1px solid var(--line);
+    border-radius:16px;padding:13px 15px;margin-bottom:10px;}
+  .msummary .mdate{color:var(--muted);font-size:11px;margin-bottom:9px;}
+  .msummary .mnums{display:flex;gap:10px;}
+  .msummary .mpill{flex:1;border-radius:12px;padding:9px 13px;background:var(--chip);
+    border:1px solid transparent;cursor:pointer;user-select:none;}
+  .msummary .mpill b{display:block;font-size:26px;line-height:1.15;font-variant-numeric:tabular-nums;}
+  .msummary .mpill span{font-size:11px;color:var(--muted);}
+  .msummary .mpill.buy b{color:var(--green);} .msummary .mpill.obs b{color:var(--amber);}
+  .msummary .mpill.on{border-color:var(--accent);background:#22304a;}
+  .chiprow{display:none;gap:8px;overflow-x:auto;padding:2px 2px 10px;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+  .chiprow::-webkit-scrollbar{display:none;}
+  .chip{flex:0 0 auto;background:var(--chip);color:var(--txt);border:1px solid var(--line);
+    border-radius:18px;padding:7px 14px;font-size:12.5px;cursor:pointer;}
+  .chip.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .scard{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:12px 14px;margin-bottom:9px;cursor:pointer;}
+  .scard:active{background:var(--panel2);}
+  .scard-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+  .scard-top .code{font-size:16px;font-weight:700;letter-spacing:.3px;}
+  .scard-top .name{color:var(--muted);font-size:11.5px;margin-left:7px;display:inline-block;
+    max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:baseline;}
+  .scard-top .price{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums;margin-bottom:3px;}
+  .scard-mrow{display:flex;flex-wrap:wrap;gap:6px 13px;margin-top:9px;align-items:center;}
+  .scard-mrow .kv{font-size:11.5px;color:var(--muted);}
+  .scard-mrow .kv b{color:var(--txt);font-weight:600;font-variant-numeric:tabular-nums;}
+  /* ---- 手机窄屏：App 化布局 ---- */
   @media (max-width:700px){
-    header{padding:10px 12px;}
-    h1{font-size:15px;} h1 span{display:none;}
-    main{padding:12px 10px;}
-    .topbar{gap:8px;margin-top:10px;}
-    .seg button{padding:7px 13px;} button.btn{padding:8px 12px;}
-    .toolrow{gap:8px;}
-    #scanSearch{min-width:0 !important;flex:1 1 130px;}
-    .toolrow input[type=number]{width:74px;}
-    th,td{padding:6px 7px;font-size:11.5px;}
-    .cards{grid-template-columns:repeat(auto-fit,minmax(102px,1fr));gap:8px;}
-    .card{padding:10px 12px;} .card .v{font-size:17px;}
-    .modal-overlay{padding:6px;} .modal-box{padding:10px;max-height:96vh;}
-    .tablewrap{max-height:70vh;-webkit-overflow-scrolling:touch;}
-    .pgrid{grid-template-columns:1fr 1fr;gap:8px 10px;}
+    body{padding-bottom:calc(62px + env(safe-area-inset-bottom));}
+    header{padding:11px 14px 9px;display:flex;align-items:center;justify-content:space-between;gap:10px;}
+    h1{font-size:16px;} h1 span{display:none;}
+    .topbar{gap:8px;margin-top:0;}
+    #loadBtn,#dataMeta{display:none;}          /* 头部去杂物：数据状态由概要卡展示 */
+    .seg{border-radius:10px;} .seg button{padding:8px 18px;font-size:13.5px;}
+    main{padding:11px 12px 0;}
+    .tabs{display:none;}                        /* 顶部tab → 底部导航 */
+    details.params{display:none;}               /* 轻量模式不可调参，参数面板收进电脑版 */
+    #scanState,#scanTier,#scanPriceMin,#scanPriceMax,#scanClearBtn,#scanMeta{display:none;} /* 筛选→概要卡+chips */
+    #scanSearch{min-width:0 !important;flex:1 1 auto;border-radius:20px;padding:9px 15px;}
+    .toolrow{gap:8px;margin-bottom:9px;}
+    #view-bt .toolrow{display:none;}            /* 体检在轻量模式自动展示,区间按钮无意义 */
+    .btnote{font-size:11px;line-height:1.6;padding:9px 12px;}
+    .tablewrap{background:transparent;border:none;border-radius:0;max-height:none;overflow:visible;}
+    .cards{grid-template-columns:1fr 1fr 1fr;gap:8px;}
+    .card{padding:10px 11px;border-radius:12px;} .card .v{font-size:16px;margin-top:3px;} .card .k{font-size:11px;}
+    .chartbox{border-radius:14px;padding:12px;}
+    .modal-overlay{padding:0;align-items:stretch;}
+    .modal-box{max-width:none;max-height:none;height:100dvh;border-radius:0;
+      padding:12px 12px calc(14px + env(safe-area-inset-bottom));}
+    #bottomNav{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:60;
+      background:rgba(20,26,34,.94);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+      border-top:1px solid var(--line);padding:7px 0 calc(7px + env(safe-area-inset-bottom));}
+    #bottomNav button{flex:1;background:none;border:none;color:var(--muted);font-size:10.5px;
+      display:flex;flex-direction:column;align-items:center;gap:3px;padding:3px 0;cursor:pointer;}
+    #bottomNav button svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+    #bottomNav button.active{color:var(--accent);}
   }
 </style>
 </head>
@@ -161,6 +203,8 @@
 
   <!-- ===== Tab1 选股扫描 ===== -->
   <section class="view active" id="view-scan">
+    <div class="msummary" id="scanSummary"></div>
+    <div class="chiprow" id="scanChips"></div>
     <div class="toolrow">
       <input type="text" id="scanSearch" placeholder="搜索 代码/名称…" style="min-width:200px">
       <select id="scanState" title="按信号状态筛选">
@@ -202,6 +246,11 @@
     <div class="tablewrap" id="btWrap"></div>
   </section>
 </main>
+
+<nav id="bottomNav">
+  <button data-t="scan" class="active"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>选股</button>
+  <button data-t="bt"><svg viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>体检</button>
+</nav>
 
 <div class="modal-overlay" id="chartModal">
   <div class="modal-box">
@@ -639,6 +688,11 @@ const PARAM_DEFS=[
 
 const state={ market:'HK', params:{...DEFAULT_PARAMS}, datasets:{}, autoLoaded:{}, scanRows:[], scanSort:{key:'volRatio',dir:1}, btResult:null, btSort:{key:'buyDate',dir:1}, chart:null };
 
+// 手机(≤700px)走 App 化渲染：卡片流/概要卡/chips/底部导航；桌面保持表格
+const mobileMQ=window.matchMedia('(max-width:700px)');
+const isMobileView=()=>mobileMQ.matches;
+mobileMQ.addEventListener('change',()=>{ renderScan(); renderBt(); });
+
 const $=s=>document.querySelector(s);
 const fmt=(x,d=2)=> (x==null||!isFinite(x))?'-':Number(x).toFixed(d);
 // 数据文件里的名称来自外部源(Yahoo等)，插入innerHTML前必须转义，防止含 < & " 的名称破坏表格结构
@@ -790,6 +844,7 @@ function runScan(){
 function renderScan(){
   // 参考价值筛选只对美股有意义，其它市场隐藏该下拉
   $('#scanTier').style.display = state.market==='US' ? '' : 'none';
+  renderScanSummary(); renderScanChips();
   const q=$('#scanSearch').value.trim().toLowerCase();
   const fState=$('#scanState').value, fTier=$('#scanTier').value;
   const pMin=parseFloat($('#scanPriceMin').value), pMax=parseFloat($('#scanPriceMax').value);
@@ -815,6 +870,7 @@ function renderScan(){
     else { wrap.innerHTML=`<div class="empty"><div class="big">○</div>当前市场没有处于「观察期 / 可买入」的票<br><span class="hint">${emptyHint}</span></div>`; }
     return;
   }
+  if(isMobileView()){ renderScanCards(rows, wrap); return; }   // 手机：卡片流
   const isUS=state.market==='US';
   const cols=isUS
     ? [['code','代码','l'],['name','名称','l'],['d0Date','突破日','l'],
@@ -849,6 +905,82 @@ function renderScan(){
     const k=th.dataset.sort; if(state.scanSort.key===k) state.scanSort.dir*=-1; else { state.scanSort.key=k; state.scanSort.dir=1; }
     renderScan();
   });
+}
+
+/* ---- 移动端渲染：概要卡 + chips + 卡片流（桌面不渲染这些） ---- */
+function renderScanSummary(){
+  const el=$('#scanSummary');
+  if(!isMobileView()){ el.style.display='none'; return; }
+  el.style.display='block';
+  const all=state.scanRows, buy=all.filter(r=>r.state==='可买入').length, obs=all.length-buy;
+  const ds=state.datasets[state.market];
+  const upto=(ds&&ds.lite)?ds.lite.data_range[1]:'';
+  const scanned=(ds&&ds.lite)?ds.lite.stock_count:(ds&&ds.stocks?ds.stocks.length:0);
+  const meta=`${state.market==='US'?'美股':'港股'}${upto?' · 数据截至 '+upto:''}${scanned?' · 已扫 '+scanned+' 只':''}`;
+  const cur=$('#scanState').value;
+  el.innerHTML=`<div class="mdate">${meta}</div><div class="mnums">`
+    +`<div class="mpill buy ${cur==='可买入'?'on':''}" data-st="可买入"><b>${buy}</b><span>可买入${cur==='可买入'?' · 筛选中':''}</span></div>`
+    +`<div class="mpill obs ${cur==='观察中'?'on':''}" data-st="观察中"><b>${obs}</b><span>观察中${cur==='观察中'?' · 筛选中':''}</span></div></div>`;
+  el.querySelectorAll('.mpill').forEach(p=>p.onclick=()=>{
+    $('#scanState').value = ($('#scanState').value===p.dataset.st) ? '' : p.dataset.st;   // 点一下过滤,再点取消
+    renderScan();
+  });
+}
+function renderScanChips(){
+  const el=$('#scanChips');
+  const show=isMobileView() && state.market==='US';
+  el.style.display=show?'flex':'none';
+  if(!show) return;
+  const cur=$('#scanTier').value;
+  const tiers=[['','全部参考价值'],['较高','较高'],['中等偏高','中等偏高'],['中等','中等'],['较低','较低']];
+  el.innerHTML=tiers.map(([v,l])=>`<button class="chip ${cur===v?'on':''}" data-tv="${v}">${l}</button>`).join('');
+  el.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{ $('#scanTier').value=c.dataset.tv; renderScan(); });
+}
+function renderScanCards(rows, wrap){
+  const tierCls={'较高':'buy','中等偏高':'buy','中等':'obs','较低':'timeout'};
+  const sorted=rows.slice().sort((a,b)=>(a.state===b.state?0:a.state==='可买入'?-1:1)
+    ||(a.d0Date<b.d0Date?1:a.d0Date>b.d0Date?-1:0));
+  let h='';
+  for(const r of sorted){
+    const tag=r.state==='可买入'?'buy':'obs';
+    const m=[];
+    if(state.market==='US'){
+      m.push(`<span class="kv">突破 <b>${(r.d0Date||'').slice(5)}</b></span>`);
+      m.push(`<span class="kv">突破位 <b>${fmt(r.breakoutLevel,2)}</b></span>`);
+      if(r.volRatio!=null) m.push(`<span class="kv">缩量比 <b>${fmt(r.volRatio,2)}</b></span>`);
+      m.push(`<span class="tag ${tierCls[r.tier]||''}">${r.tier}</span>`);
+      if(r.calFlag) m.push(`<span class="tag timeout">${r.calFlag}</span>`);
+    } else {
+      m.push(`<span class="kv">D0 <b>${(r.d0Date||'').slice(5)}</b></span>`);
+      m.push(`<span class="kv">涨幅 <b>${fmt(r.changePct,1)}%</b></span>`);
+      m.push(`<span class="kv">低位 <b>${fmt(r.lowPctValue,0)}%</b></span>`);
+      if(r.volRatio!=null) m.push(`<span class="kv">缩量比 <b>${fmt(r.volRatio,2)}</b></span>`);
+    }
+    h+=`<div class="scard" data-chart data-code="${esc(r.code)}" data-market="${r.market}" data-d0="${r.d0Date||''}">`
+      +`<div class="scard-top"><div style="min-width:0"><span class="code">${esc(r.code)}</span><span class="name">${esc(r.name)}</span></div>`
+      +`<div style="text-align:right;flex:0 0 auto"><div class="price">${fmt(r.curPrice,2)}</div><span class="tag ${tag}">${r.state}</span></div></div>`
+      +`<div class="scard-mrow">${m.join('')}</div></div>`;
+  }
+  wrap.innerHTML=h;
+}
+function renderBtCards(rows, wrap){
+  const exitMap={profit:['profit','止盈'],stop:['stop','止损'],timeout:['timeout','超时']};
+  const tierCls={'较高':'buy','中等偏高':'buy','中等':'obs','较低':'timeout'};
+  let h='';
+  for(const t of rows.slice().reverse()){   // 最新的交易排前面
+    const [cl,tx]=exitMap[t.exit]||['',t.exit];
+    h+=`<div class="scard" data-chart data-code="${esc(t.code)}" data-market="${t.market}" data-d0="${t.d0Date||''}"`
+      +` data-buy="${t.buyDate||''}" data-buyprice="${t.buyPrice}" data-sell="${t.sellDate||''}" data-sellprice="${t.sellPrice}">`
+      +`<div class="scard-top"><div style="min-width:0"><span class="code">${esc(t.code)}</span><span class="name">${esc(t.name)}</span></div>`
+      +`<div style="text-align:right;flex:0 0 auto"><div class="price ${t.ret>=0?'pos':'neg'}">${t.ret>=0?'+':''}${fmt(t.ret,2)}%</div><span class="tag ${cl}">${tx}</span></div></div>`
+      +`<div class="scard-mrow"><span class="kv">买 <b>${(t.buyDate||'').slice(5)} @ ${fmt(t.buyPrice,2)}</b></span>`
+      +`<span class="kv">卖 <b>${(t.sellDate||'').slice(5)} @ ${fmt(t.sellPrice,2)}</b></span>`
+      +`<span class="kv">持有 <b>${t.holdDays}天</b></span>`
+      +(t.tier?`<span class="tag ${tierCls[t.tier]||''}">${t.tier}</span>`:'')
+      +(t.calFlag?`<span class="tag timeout">${t.calFlag}</span>`:'')
+      +`</div></div>`;
+  }
+  wrap.innerHTML=h;
 }
 
 /* ---- Tab2 信号体检 ---- */
@@ -915,6 +1047,7 @@ function renderBt(){
   const sk=state.btSort.key, dir=state.btSort.dir;
   rows.sort((a,b)=>{ let x=a[sk],y=b[sk]; if(typeof x==='string') return dir*(x<y?-1:x>y?1:0); return dir*(x-y); });
   if(!rows.length){ wrap.innerHTML=`<div class="empty"><div class="big">○</div>该区间内没有产生交易</div>`; return; }
+  if(isMobileView()){ renderBtCards(rows, wrap); return; }   // 手机：交易卡片流
   const exitMap={profit:['profit','止盈'],stop:['stop','止损'],timeout:['timeout','超时']};
   const isUSbt=state.market==='US';
   const cols=[['code','代码','l'],['name','名称','l'],['board','市场','l'],['d0Date',isUSbt?'突破日':'D0','l'],
@@ -1116,12 +1249,13 @@ function drawKline(){
 
 /* ---- 事件绑定 ---- */
 document.querySelectorAll('#marketSeg button').forEach(b=>b.onclick=()=>switchMarket(b.dataset.m));
-document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{
-  document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('active'));
-  b.classList.add('active');
-  $('#view-scan').classList.toggle('active', b.dataset.t==='scan');
-  $('#view-bt').classList.toggle('active', b.dataset.t==='bt');
-});
+function switchTab(t){
+  document.querySelectorAll('.tabs button, #bottomNav button').forEach(x=>x.classList.toggle('active', x.dataset.t===t));
+  $('#view-scan').classList.toggle('active', t==='scan');
+  $('#view-bt').classList.toggle('active', t==='bt');
+  window.scrollTo(0,0);
+}
+document.querySelectorAll('.tabs button, #bottomNav button').forEach(b=>b.onclick=()=>switchTab(b.dataset.t));
 $('#loadBtn').onclick=()=>$('#fileInput').click();
 $('#fileInput').onchange=e=>{ if(e.target.files[0]) handleFile(e.target.files[0]); e.target.value=''; };
 $('#applyBtn').onclick=()=>{
