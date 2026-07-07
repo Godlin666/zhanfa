@@ -2,6 +2,8 @@
 data_*.json
 *.json.gz
 info_cache.json
+# 本机 Claude Code 权限配置，不发布到公开仓库
+.claude/
 # 预计算产物（Actions 每次现生成）
 site/
 __pycache__/

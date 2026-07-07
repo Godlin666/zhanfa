@@ -19,7 +19,7 @@ const vm = require('vm');
 const DIR = __dirname;
 const OUT_DIR = path.join(DIR, 'site');
 // 轻量包里每只命中股票带的K线窗口：D0 往前 70 根 + 之后全部（画图窗口是 D0-60~+15，留余量）
-const CHART_LOOKBACK = 70;
+const CHART_LOOKBACK = 110;   // 多带些历史，手机端K线手势平移才有余地
 const RECENT_TRADES = 150;   // 体检明细只带最近这么多笔（统计数字是全量算的）
 
 /* ---- 从 index.html 抽引擎（<script> 起始到「UI 层」分隔线为止的纯函数区） ---- */

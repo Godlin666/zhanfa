@@ -1,11 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <rect width="128" height="128" rx="24" fill="#0f1419"/>
-  <g stroke-width="4">
-    <line x1="34" y1="30" x2="34" y2="98" stroke="#ef4444"/>
-    <rect x="26" y="44" width="16" height="34" rx="2" fill="#ef4444"/>
-    <line x1="64" y1="40" x2="64" y2="92" stroke="#8b9bb0"/>
-    <rect x="56" y="56" width="16" height="22" rx="2" fill="#8b9bb0"/>
-    <line x1="94" y1="20" x2="94" y2="84" stroke="#22c55e"/>
-    <rect x="86" y="30" width="16" height="38" rx="2" fill="#22c55e"/>
-  </g>
+  <rect width="128" height="128" rx="26" fill="#0c0d10"/>
+  <rect x="20" y="20" width="88" height="88" rx="16" fill="#c73e3a"/>
+  <text x="64" y="66" text-anchor="middle" dominant-baseline="central"
+        font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="56" font-weight="800"
+        fill="#ffffff">战</text>
 </svg>
