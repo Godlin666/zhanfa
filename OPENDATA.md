@@ -95,6 +95,7 @@ print(len(df), "行")
 | `hk_recent90.zip` | 港股近期行情（24 万行，2.5 MB） |
 | `us_recent90.zip` | 美股近期行情（59 万行，8.1 MB） |
 | `symbols.csv` | 代码对照表（0.7 MB） |
+| `benchmarks.csv` | **市场基准**：指数 / ETF / 期货 / 利率，14 个标的（0.6 MB） |
 
 > `recent90` 是**每只股票各自最后 90 条记录**，不是"最近 90 个日历日"。
 > 因为各股停牌情况不同，整体日期跨度会略大于 90 个交易日。
@@ -108,6 +109,7 @@ print(len(df), "行")
 | `hk_daily.parquet` | 港股全量，127 万行 | 11.0 MB，**推荐**，读取快得多 |
 | `us_daily.parquet` | 美股全量，295 万行 | 36.0 MB，同上 |
 | `symbols.csv` | 代码对照表 | 0.7 MB |
+| `benchmarks.csv` | 市场基准，同公开区 | 0.6 MB |
 | `meta.json` | 元信息 | 1 KB |
 
 > 全量文件行数远超 Excel 上限（美股 295 万行），Excel 打不开，只能用代码处理。
@@ -143,6 +145,43 @@ print(len(df), "行")
 | `first_date` / `last_date` / `bars` | 该股票数据的起止日期和条数 |
 
 ---
+
+## 四之二、市场基准（benchmarks.csv）
+
+指数、ETF、期货、利率，用来做参照系。**放在公开区，不用密钥**：
+
+```python
+import pandas as pd
+b = pd.read_csv("https://<BUCKET>.<ENDPOINT>/p/<PREFIX>/benchmarks.csv")
+hsi = b[b.code == "HSI"]          # 恒生指数
+vix = b[b.code == "VIX"]          # 波动率指数
+b[b.category == "future"]         # 只看期货
+```
+
+字段比行情文件多一个 `category`：`index` / `etf` / `future` / `rate`。
+
+| code | 名称 | Yahoo 代码 | 类别 |
+|---|---|---|---|
+| `HSI` | 恒生指数 | `^HSI` | index |
+| `HSCE` | 恒生中国企业指数 | `^HSCE` | index |
+| `HSTECH` | 恒生科技 ETF | `3033.HK` | etf |
+| `SPX` | 标普500 | `^GSPC` | index |
+| `DJI` | 道琼斯工业平均 | `^DJI` | index |
+| `NDX` | 纳斯达克100 | `^NDX` | index |
+| `IXIC` | 纳斯达克综合 | `^IXIC` | index |
+| `VIX` | 波动率指数 | `^VIX` | index |
+| `QQQ` | 纳指100 ETF | `QQQ` | etf |
+| `SPY` | 标普500 ETF | `SPY` | etf |
+| `DXY` | 美元指数 | `DX-Y.NYB` | index |
+| `US10Y` | 美国10年期国债收益率 | `^TNX` | rate |
+| `ES` | 标普500期货 | `ES=F` | future |
+| `NQ` | 纳斯达克100期货 | `NQ=F` | future |
+
+> ⚠️ **`HSTECH` 是 ETF 不是指数**。Yahoo 不提供恒生科技指数本身（`^HSTECH` 返回 404），
+> 这里用跟踪它的南方东英 ETF `3033.HK` 代理，走势基本一致但**绝对数值完全不同**
+> （ETF 约 4.5 港元，指数约 6000 点）。当趋势参照可以，别当指数点位用。
+
+> `US10Y` 的值是**收益率百分比**（如 `4.72` 表示 4.72%），不是价格。
 
 ## 五、更新时间
 

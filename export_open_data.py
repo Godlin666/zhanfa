@@ -37,6 +37,7 @@ PUBLIC = os.path.join(OUT, "public")
 # A 股数据是陈的，导出去等于发过期数据
 MARKETS = ["HK", "US"]
 RECENT_BARS = 90          # 近 N 个交易日，按每只股票自身的序列尾部取
+BENCH_SRC = "benchmarks.json"   # 由 fetch_benchmarks.py 产出，可选
 COLUMNS = ["code", "name", "market", "date", "open", "high", "low", "close", "volume"]
 PARQUET_BATCH = 200_000   # 每积累这么多行落一次盘
 
@@ -169,6 +170,52 @@ def export_market(market, info, symbols_rows, meta_markets):
     del payload, stocks
 
 
+def export_benchmarks():
+    """
+    基准标的(指数/ETF/期货/利率)单独成表，两边都放一份:
+    体积只有几百KB,放公开区让外部免密钥直接读;全量区也放一份方便一次取齐。
+    没有 benchmarks.json 时静默跳过——它是可选增强,缺了不该让导出失败。
+    """
+    if not os.path.exists(BENCH_SRC):
+        print(f"[跳过] {BENCH_SRC} 不存在，本次不导出基准数据")
+        return None
+
+    with open(BENCH_SRC, encoding="utf-8") as f:
+        payload = json.load(f)
+    items = payload.get("items", [])
+    if not items:
+        return None
+
+    header = ["code", "name", "market", "category", "date",
+              "open", "high", "low", "close", "volume"]
+    rows = []
+    for it in items:
+        for k in it.get("kline", []):
+            date, o, h, lo_, c, v = k
+            rows.append([it["code"], it["name"], it["market"], it["category"],
+                         date, o, h, lo_, c, int(v)])
+
+    for d in (PUBLIC, FULL):
+        with open(os.path.join(d, "benchmarks.csv"), "w",
+                  newline="", encoding="utf-8") as f:
+            w = csv.writer(f)
+            w.writerow(header)
+            w.writerows(rows)
+
+    dates = [r[4] for r in rows]
+    print(f"[基准] {len(items)} 个标的 / {len(rows)} 行 / {min(dates)}~{max(dates)}")
+    return {
+        "count": len(items),
+        "rows": len(rows),
+        "date_range": [min(dates), max(dates)],
+        "source_generated_at": payload.get("generated_at"),
+        "symbols": [{"code": i["code"], "name": i["name"],
+                     "category": i["category"], "market": i["market"],
+                     "yahoo": i["yahoo"], "bars": len(i.get("kline", []))}
+                    for i in items],
+    }
+
+
 def main():
     shutil.rmtree(OUT, ignore_errors=True)
     os.makedirs(FULL, exist_ok=True)
@@ -185,6 +232,8 @@ def main():
     symbols_rows, meta_markets = [], {}
     for m in MARKETS:
         export_market(m, info, symbols_rows, meta_markets)
+
+    bench_meta = export_benchmarks()
 
     if not meta_markets:
         print("[错误] 没有任何市场数据可导出", file=sys.stderr)
@@ -209,6 +258,7 @@ def main():
         "columns": COLUMNS,
         "recent_bars": RECENT_BARS,
         "markets": meta_markets,
+        "benchmarks": bench_meta,
         "files": [],
     }
     for d in (FULL, PUBLIC):

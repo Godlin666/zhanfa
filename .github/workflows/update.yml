@@ -89,6 +89,10 @@ jobs:
       - name: 补充公司行业信息（带缓存，只查新命中的股票）
         run: python -u enrich_info.py
 
+      - name: 抓取市场基准（指数/ETF/期货/利率，给外部使用者做参照系）
+        continue-on-error: true          # 基准是可选增强，抓不到不该拖垮主流程
+        run: python -u fetch_benchmarks.py --incremental
+
       - name: 导出开放数据（扁平化通用格式，给外部使用）
         continue-on-error: true          # 新增功能不该拖垮原有的网页发布
         run: |
@@ -118,7 +122,7 @@ jobs:
         run: |
           set -e
           mkdir -p /tmp/snap
-          for f in data_*.json info_cache.json; do [ -f "$f" ] && gzip -9 -c "$f" > "/tmp/snap/$f.gz"; done
+          for f in data_*.json info_cache.json benchmarks.json; do [ -f "$f" ] && gzip -9 -c "$f" > "/tmp/snap/$f.gz"; done
           true
           cd /tmp/snap
           git init -q -b data
