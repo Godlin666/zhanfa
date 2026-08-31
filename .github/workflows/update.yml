@@ -89,6 +89,24 @@ jobs:
       - name: 补充公司行业信息（带缓存，只查新命中的股票）
         run: python -u enrich_info.py
 
+      - name: 导出开放数据（扁平化通用格式，给外部使用）
+        continue-on-error: true          # 新增功能不该拖垮原有的网页发布
+        run: |
+          pip install --quiet pyarrow
+          python -u export_open_data.py
+
+      - name: 上传到阿里云 OSS（未配置时自动跳过）
+        continue-on-error: true          # 上传失败不影响自己网页的发布
+        env:
+          OSS_ENDPOINT:      ${{ secrets.OSS_ENDPOINT }}
+          OSS_BUCKET:        ${{ secrets.OSS_BUCKET }}
+          OSS_KEY_ID:        ${{ secrets.OSS_KEY_ID }}
+          OSS_KEY_SECRET:    ${{ secrets.OSS_KEY_SECRET }}
+          OSS_PUBLIC_PREFIX: ${{ secrets.OSS_PUBLIC_PREFIX }}
+        run: |
+          pip install --quiet oss2
+          python -u upload_oss.py
+
       - name: 推送每日信号到手机（Bark，未配置 BARK_KEY 时自动跳过）
         if: github.event_name == 'schedule'
         env:

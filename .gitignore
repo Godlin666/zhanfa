@@ -8,3 +8,5 @@ info_cache.json
 site/
 __pycache__/
 .DS_Store
+# 开放数据导出产物（Actions 每次现生成并上传 OSS）
+open_data/
