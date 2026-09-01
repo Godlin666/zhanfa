@@ -142,6 +142,13 @@ jobs:
         run: |
           set -e
           if [ "$(date -u +%u)" != "5" ]; then echo "非周五，跳过存档"; exit 0; fi
+          # 周五有两次 schedule 会走到这里：08:45(HK) 和 22:00(US)。
+          # 必须等美股那次再存——港股那次跑的时候美股数据还停在周四，
+          # 先存的话 tag 就被占了，美股那次 create 失败跳过，
+          # 快照里的美股会永远缺周五。
+          if [ "${{ steps.mk.outputs.markets }}" != "US" ]; then
+            echo "周五港股这次不存档，等 22:00 美股跑完再存（否则快照里美股少一天）"; exit 0
+          fi
           tag="snap-$(date -u +%Y%m%d)"
           gh release create "$tag" /tmp/snap/*.gz --notes "每周数据快照 $(date -u +%F)" 2>/dev/null || echo "本周快照已存在，跳过"
           gh release list --limit 100 --json tagName -q '.[].tagName' | grep '^snap-' | sort -r | tail -n +5 | while read -r t; do
