@@ -96,6 +96,10 @@ jobs:
         continue-on-error: true          # 基准是可选增强，抓不到不该拖垮主流程
         run: python -u fetch_benchmarks.py --incremental
 
+      - name: 补抓东财标的（恒生科技指数/期货，Yahoo 没有的）
+        continue-on-error: true          # 东财限流时跳过，下次再补
+        run: python -u patch_em_benchmarks.py 6
+
       - name: 导出开放数据（扁平化通用格式，给外部使用）
         continue-on-error: true          # 新增功能不该拖垮原有的网页发布
         run: |
